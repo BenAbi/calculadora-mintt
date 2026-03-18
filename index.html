@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Soluciones · mintt</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<!-- Google API client -->
+<script src="https://apis.google.com/js/api.js"></script>
+
+<style>
+/* ─────────────────────────────────────────────────────────────────────
+   CONFIG — edita solo estas constantes si cambian
+───────────────────────────────────────────────────────────────────── */
+:root {
+  --bg:#0d0d0b; --surf:#141410; --surf2:#1a1a15; --surf3:#1f1f19;
+  --brd:#2a2a22; --brd2:#3a3a30;
+  --gold:#c9a84c; --gold2:#e8c97a; --gold-d:#7a6230; --gold-bg:#1e1c14;
+  --green:#4caf7a; --green-d:#2a6044; --green-bg:#0d1f15;
+  --orange:#e0883a; --orange-d:#7a4a1a; --orange-bg:#1e1508;
+  --red:#e05a4a; --red-d:#7a2a20; --red-bg:#1e0e0a;
+  --blue:#4a9fd4; --blue-bg:#0d1a24;
+  --txt:#e8e4d8; --txt2:#a0a090; --txt3:#5a5a4a;
+  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
+}
+
+/* ─ Reset ─ */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-weight:300;min-height:100vh;font-size:13px}
+
+/* ════════════════════════════════════════════════════════
+   LOGIN SCREEN
+════════════════════════════════════════════════════════ */
+#login-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:0;
+}
+#login-screen.hidden{display:none}
+
+.login-box{
+  width:360px;background:var(--surf);
+  border:1px solid var(--brd);border-radius:10px;
+  padding:44px 40px 36px;
+}
+.login-logo{
+  font-family:'Playfair Display',serif;font-size:32px;
+  color:var(--gold);text-align:center;letter-spacing:.02em;margin-bottom:4px;
+}
+.login-sub{
+  font-size:10px;color:var(--txt3);text-align:center;
+  font-family:var(--mono);letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:36px;
+}
+.login-divider{
+  text-align:center;font-size:11px;color:var(--txt3);
+  margin:20px 0;font-family:var(--mono);letter-spacing:.06em;
+}
+
+/* Botón Google oficial — sobreescribimos el estilo */
+#g-signin-btn{
+  width:100%;display:flex;align-items:center;justify-content:center;
+  gap:10px;padding:11px 16px;border-radius:6px;cursor:pointer;
+  background:#fff;border:1px solid #dadce0;
+  font-family:var(--sans);font-size:14px;font-weight:500;color:#3c4043;
+  transition:box-shadow .15s;
+}
+#g-signin-btn:hover{box-shadow:0 1px 6px rgba(0,0,0,.2)}
+#g-signin-btn svg{width:20px;height:20px;flex-shrink:0}
+
+.login-error{
+  color:var(--red);font-size:11px;text-align:center;
+  margin-top:14px;min-height:16px;font-family:var(--mono);
+  line-height:1.5;
+}
+.login-loading{
+  color:var(--txt3);font-size:11px;text-align:center;
+  margin-top:14px;font-family:var(--mono);letter-spacing:.06em;
+  display:none;
+}
+
+/* ════════════════════════════════════════════════════════
+   CARGANDO PRECIOS
+════════════════════════════════════════════════════════ */
+#loading-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:8888;
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+}
+#loading-screen.show{display:flex}
+.loading-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--gold);
+  display:inline-block;margin:0 3px;
+  animation:blink 1.2s infinite ease-in-out;
+}
+.loading-dot:nth-child(2){animation-delay:.2s}
+.loading-dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* ════════════════════════════════════════════════════════
+   APP LAYOUT
+════════════════════════════════════════════════════════ */
+#app{display:none}
+#app.show{display:block}
+
+header{
+  background:var(--surf);border-bottom:1px solid var(--brd);
+  padding:16px 28px;display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:100;
+}
+header h1{font-family:'Playfair Display',serif;font-size:20px;color:var(--gold);letter-spacing:.02em}
+header .user-info{margin-left:auto;display:flex;align-items:center;gap:10px}
+.user-avatar{
+  width:30px;height:30px;border-radius:50%;overflow:hidden;
+  border:1px solid var(--brd);flex-shrink:0;
+}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+.user-name{font-size:11px;color:var(--txt2);font-family:var(--mono)}
+.btn-logout{
+  font-size:10px;color:var(--txt3);background:none;border:1px solid var(--brd);
+  padding:4px 9px;border-radius:4px;cursor:pointer;font-family:var(--mono);
+  letter-spacing:.06em;transition:all .15s;
+}
+.btn-logout:hover{border-color:var(--red);color:var(--red)}
+.margen-wrap{display:flex;align-items:center;gap:8px}
+.margen-wrap label{font-size:10px;color:var(--txt3);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
+
+.layout{display:grid;grid-template-columns:380px 1fr;min-height:calc(100vh - 61px)}
+
+/* ────── Sidebar ────── */
+.sidebar{
+  background:var(--surf);border-right:1px solid var(--brd);
+  overflow-y:auto;height:calc(100vh - 61px);position:sticky;top:61px;
+}
+.results{padding:24px 28px 80px;overflow-y:auto}
+
+/* ────── Client block ────── */
+.client-block{padding:14px 18px;border-bottom:1px solid var(--brd);background:var(--surf2)}
+.client-label{font-family:var(--mono);font-size:10px;color:var(--txt3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.client-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.client-field label{font-size:11px;color:var(--txt3);display:block;margin-bottom:3px}
+.client-field input{
+  width:100%;background:var(--surf3);border:1px solid var(--brd);
+  color:var(--txt);padding:6px 9px;border-radius:3px;
+  font-family:var(--sans);font-size:12px;outline:none;
+}
+.client-field input:focus{border-color:var(--gold-d)}
+
+/* ────── Bloques producto ────── */
+.block{border-bottom:1px solid var(--brd)}
+.block-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 18px;cursor:pointer;user-select:none;transition:background .15s;
+}
+.block-head:hover{background:var(--surf2)}
+.block-title{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:500}
+.block-badge{
+  font-family:var(--mono);font-size:9px;padding:2px 7px;
+  border-radius:10px;letter-spacing:.08em;text-transform:uppercase;
+}
+.b-telco{background:var(--blue-bg);color:var(--blue);border:1px solid #1a3a50}
+.b-plat{background:#0d1f0d;color:#4caf4c;border:1px solid #1a3a1a}
+.b-bot{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-d)}
+.b-sms{background:var(--surf3);color:var(--txt2);border:1px solid var(--brd)}
+.b-hw{background:var(--red-bg);color:var(--red);border:1px solid var(--red-d)}
+.b-serv{background:var(--surf3);color:var(--txt2);border:1px solid var(--brd)}
+
+.block-toggle{
+  width:36px;height:20px;background:var(--surf3);
+  border:1px solid var(--brd);border-radius:10px;position:relative;
+  transition:all .25s;flex-shrink:0;
+}
+.block-toggle::after{
+  content:'';position:absolute;left:2px;top:2px;
+  width:14px;height:14px;background:var(--txt3);
+  border-radius:50%;transition:all .25s;
+}
+.block-toggle.on{background:var(--green-d);border-color:var(--green)}
+.block-toggle.on::after{left:18px;background:var(--green)}
+
+.block-body{padding:4px 18px 14px;display:none}
+.block-body.open{display:block}
+
+/* ────── Campos ────── */
+.field{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 0;border-bottom:1px solid var(--brd);gap:8px;
+}
+.field:last-child{border-bottom:none}
+.field-label{font-size:12px;color:var(--txt2);flex:1;line-height:1.3}
+input[type=number],select{
+  background:var(--surf3);border:1px solid var(--brd);color:var(--txt);
+  padding:5px 8px;border-radius:3px;font-family:var(--mono);font-size:12px;
+  outline:none;text-align:right;width:90px;
+}
+input[type=number]:focus,select:focus{border-color:var(--gold-d)}
+select{width:auto;min-width:130px;text-align:left}
+
+/* ────── Resultados ────── */
+.s-lbl{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--gold);
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+}
+.s-lbl::after{content:'';flex:1;height:1px;background:var(--brd)}
+
+.totals-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px}
+.tot-card{background:var(--surf);border:1px solid var(--brd);border-radius:4px;padding:16px 18px}
+.tot-label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);margin-bottom:8px}
+.tot-value{font-family:'Playfair Display',serif;font-size:24px;line-height:1}
+.tot-sub{font-family:var(--mono);font-size:10px;color:var(--txt3);margin-top:5px}
+.tot-pvp .tot-value{color:var(--gold)}
+.tot-cost .tot-value{color:var(--txt2)}
+.tot-margin .tot-value{color:var(--green)}
+.tot-margin{border-color:var(--green-d)}
+.margin-bar-wrap{margin-top:8px;height:3px;background:var(--surf3);border-radius:2px;overflow:hidden}
+.margin-bar{height:100%;background:linear-gradient(90deg,var(--green-d),var(--green));transition:width .5s}
+
+.breakdown{background:var(--surf);border:1px solid var(--brd);border-radius:4px;margin-bottom:20px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--txt3);padding:9px 10px;border-bottom:1px solid var(--brd);
+  text-align:right;background:var(--surf2);white-space:nowrap;
+}
+thead th:first-child{text-align:left}
+tbody td{
+  padding:9px 10px;border-bottom:1px solid var(--brd);
+  text-align:right;font-family:var(--mono);font-size:11px;color:var(--txt2);
+  vertical-align:middle;white-space:nowrap;
+}
+tbody td:first-child{text-align:left;font-family:var(--sans);font-size:12px;color:var(--txt);white-space:normal}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(201,168,76,.04)}
+tbody tr.subtotal td{font-weight:500;border-top:1px solid var(--brd2);color:var(--txt)}
+.pvp-col{color:var(--gold2)!important}
+.margen-col{color:var(--green)!important}
+.unico-tag{
+  font-size:9px;padding:1px 5px;border-radius:3px;
+  background:var(--surf3);color:var(--txt3);margin-left:4px;font-family:var(--mono);
+}
+.semaforo{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.s-green{background:var(--green)}
+.s-orange{background:var(--orange)}
+.s-red{background:var(--red)}
+.empty-msg{padding:24px;text-align:center;color:var(--txt3);font-size:12px;font-style:italic}
+.info-chip{
+  font-family:var(--mono);font-size:10px;padding:2px 7px;
+  border-radius:3px;background:var(--surf3);color:var(--txt3);display:inline-block;
+}
+
+/* ────── Ajuste manual ────── */
+.adj-input{
+  width:85px!important;padding:4px 6px!important;
+  font-size:11px!important;background:var(--surf2)!important;
+}
+
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto}
+  .totals-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">mintt</div>
+    <div class="login-sub">Calculadora de soluciones · acceso interno</div>
+
+    <button id="g-signin-btn" onclick="signInWithGoogle()">
+      <!-- Google logo SVG oficial -->
+      <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+      Entrar con Google
+    </button>
+
+    <div class="login-error" id="l-error"></div>
+    <div class="login-loading" id="l-loading">
+      <span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ LOADING ══ -->
+<div id="loading-screen">
+  <div style="font-family:var(--mono);font-size:11px;color:var(--txt3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">Cargando tarifas</div>
+  <div><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ APP ══ -->
+<div id="app">
+
+<header>
+  <h1>Calculadora de Soluciones</h1>
+  <span style="font-family:var(--mono);font-size:10px;color:var(--txt3);letter-spacing:.1em;text-transform:uppercase">mintt · uso interno</span>
+  <div class="user-info">
+    <div class="margen-wrap">
+      <label>Margen global</label>
+      <input type="number" id="g-margen" value="30" min="0" max="200" style="width:56px;padding:4px 6px;font-size:12px" oninput="recalc()">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--txt2)">%</span>
+    </div>
+    <div class="user-avatar"><img id="user-photo" src="" alt=""></div>
+    <span class="user-name" id="user-name-display">—</span>
+    <button class="btn-logout" onclick="signOut()">Salir</button>
+  </div>
+</header>
+
+<div class="layout">
+
+<!-- ══════════════════════════════════════════════════════ SIDEBAR ══ -->
+<aside class="sidebar">
+
+  <div class="client-block">
+    <div class="client-label">Datos del proyecto</div>
+    <div class="client-grid">
+      <div class="client-field"><label>Cliente</label><input type="text" id="cli-nombre" placeholder="Nombre grupo..." oninput="recalc()"></div>
+      <div class="client-field"><label>Sector</label><input type="text" id="cli-sector" placeholder="Restauración…" oninput="recalc()"></div>
+      <div class="client-field"><label>Nº locales / sedes</label><input type="number" id="cli-locales" value="1" min="1" oninput="recalc()"></div>
+      <div class="client-field"><label>Comercial</label><input type="number" id="cli-comercial" value="1" style="display:none"><input type="text" id="cli-comercial-txt" placeholder="Nombre..." oninput="recalc()"></div>
+    </div>
+  </div>
+
+  <!-- Telco -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('telco')"><div class="block-title"><span class="block-badge b-telco">Telco</span>Conectividad</div><div class="block-toggle" id="tog-telco"></div></div>
+  <div class="block-body" id="body-telco">
+    <div class="field"><span class="field-label">Fibra FTTH 1000Mb</span><input type="checkbox" id="chk-fibra" checked onchange="recalc()"></div>
+    <div class="field"><span class="field-label">Fijo + DDI Geográfico</span><input type="checkbox" id="chk-fijo" checked onchange="recalc()"></div>
+    <div class="field"><span class="field-label">Móvil</span><input type="checkbox" id="chk-movil" checked onchange="recalc()"></div>
+    <div id="movil-opts">
+      <div class="field"><span class="field-label">Plan móvil</span>
+        <select id="sel-movil" onchange="recalc()">
+          <option value="C12">Contigo 12</option>
+          <option value="C20">Contigo 20</option>
+          <option value="C25" selected>Contigo 25</option>
+          <option value="C50">Contigo 50</option>
+        </select>
+      </div>
+      <div class="field"><span class="field-label">SIMs por local</span><input type="number" id="num-sims" value="3" min="1" max="20" oninput="recalc()"></div>
+    </div>
+  </div></div>
+
+  <!-- IVR -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('ivr')"><div class="block-title"><span class="block-badge b-plat">Plataforma</span>IVR</div><div class="block-toggle" id="tog-ivr"></div></div>
+  <div class="block-body" id="body-ivr">
+    <div class="field"><span class="field-label">Llamadas/mes por local</span><input type="number" id="ivr-calls" value="350" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Tiempo medio (min)</span><input type="number" id="ivr-tmc" value="1" min="0.1" step="0.1" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Grabación activa</span><input type="checkbox" id="ivr-grab" onchange="recalc()"></div>
+  </div></div>
+
+  <!-- PBX -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('pbx')"><div class="block-title"><span class="block-badge b-plat">Plataforma</span>PBX Virtual</div><div class="block-toggle" id="tog-pbx"></div></div>
+  <div class="block-body" id="body-pbx">
+    <div class="field"><span class="field-label">Extensiones por local</span><input type="number" id="pbx-ext" value="3" min="1" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">DDIs adicionales/local</span><input type="number" id="pbx-ddi" value="0" min="0" oninput="recalc()"></div>
+  </div></div>
+
+  <!-- ACD -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('acd')"><div class="block-title"><span class="block-badge b-plat">ACD</span>ACD Virtual CC</div><div class="block-toggle" id="tog-acd"></div></div>
+  <div class="block-body" id="body-acd">
+    <div class="field"><span class="field-label">Plataforma base (€/mes)</span><input type="number" id="acd-base" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Agentes voz extra</span><input type="number" id="acd-agvoz" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Agentes chat+voz extra</span><input type="number" id="acd-agcv" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Supervisores extra</span><input type="number" id="acd-sup" value="0" min="0" oninput="recalc()"></div>
+  </div></div>
+
+  <!-- IA -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('ia')"><div class="block-title"><span class="block-badge b-bot">IA</span>Solución IA VoiceBot</div><div class="block-toggle" id="tog-ia"></div></div>
+  <div class="block-body" id="body-ia">
+    <div class="field"><span class="field-label">Llamadas/mes (grupo total)</span><input type="number" id="ia-calls" value="30000" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">% llamadas NO completadas</span><input type="number" id="ia-pct-nc" value="50" min="0" max="100" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Transcripción activa</span><input type="checkbox" id="ia-trans" onchange="recalc()"></div>
+    <div class="field"><span class="field-label">TMC medio (min)</span><input type="number" id="ia-tmc" value="2" min="0.5" step="0.1" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Desarrollo inicial (€ único)</span><input type="number" id="ia-dev" value="0" min="0" oninput="recalc()"></div>
+  </div></div>
+
+  <!-- BookyBot -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('bb')"><div class="block-title"><span class="block-badge b-bot">Bot</span>BookyBot</div><div class="block-toggle" id="tog-bb"></div></div>
+  <div class="block-body" id="body-bb">
+    <div class="field"><span class="field-label">Plan</span>
+      <select id="sel-bb" onchange="recalc()">
+        <option value="BB-HOST">Host (0€)</option>
+        <option value="BB-STAFF" selected>Staff</option>
+        <option value="BB-MAITRE">Maître</option>
+      </select>
+    </div>
+  </div></div>
+
+  <!-- Bot Adhoc -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('adhoc')"><div class="block-title"><span class="block-badge b-bot">Bot</span>Bot Adhoc a medida</div><div class="block-toggle" id="tog-adhoc"></div></div>
+  <div class="block-body" id="body-adhoc">
+    <div style="padding:4px 0 8px;font-size:11px;color:var(--txt3)">Valores del cotizador adhoc:</div>
+    <div class="field"><span class="field-label">Construcción (€ único coste)</span><input type="number" id="adhoc-dev-cost" value="6261" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Cuota mensual coste (€)</span><input type="number" id="adhoc-mes-cost" value="336" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Conv. telefónicas/mes</span><input type="number" id="adhoc-conv-tel" value="400" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Conv. webchat/mes</span><input type="number" id="adhoc-conv-web" value="100" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">SMS/mes</span><input type="number" id="adhoc-sms" value="200" min="0" oninput="recalc()"></div>
+  </div></div>
+
+  <!-- SMS -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('sms')"><div class="block-title"><span class="block-badge b-sms">SMS</span>SMS / RCS / Nº900</div><div class="block-toggle" id="tog-sms"></div></div>
+  <div class="block-body" id="body-sms">
+    <div class="field"><span class="field-label">SMS/mes confirmación</span><input type="number" id="sms-vol" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">RCS/mes promocional</span><input type="number" id="rcs-vol" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Min. 900 fijo/mes</span><input type="number" id="n900f-vol" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Min. 900 móvil/mes</span><input type="number" id="n900m-vol" value="0" min="0" oninput="recalc()"></div>
+  </div></div>
+
+  <!-- Hardware -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('hw')"><div class="block-title"><span class="block-badge b-hw">HW</span>Terminales (pago único)</div><div class="block-toggle" id="tog-hw"></div></div>
+  <div class="block-body" id="body-hw">
+    <div class="field"><span class="field-label">Grandstream GRP2615</span><input type="number" id="hw-2615" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Grandstream GRP2612P</span><input type="number" id="hw-2612" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Módulo GBX20</span><input type="number" id="hw-gbx" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Auriculares CS540</span><input type="number" id="hw-cs540" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Setup/instalación (ud)</span><input type="number" id="hw-setup" value="0" min="0" oninput="recalc()"></div>
+  </div></div>
+
+  <!-- Horas -->
+  <div class="block"><div class="block-head" onclick="toggleBlock('horas')"><div class="block-title"><span class="block-badge b-serv">Serv.</span>Bolsa de horas</div><div class="block-toggle" id="tog-horas"></div></div>
+  <div class="block-body" id="body-horas">
+    <div class="field"><span class="field-label">Horas sueltas</span><input type="number" id="h-sueltas" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Pack 10h</span><input type="number" id="h-p10" value="0" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Pack 20h</span><input type="number" id="h-p20" value="0" min="0" oninput="recalc()"></div>
+  </div></div>
+
+</aside>
+
+<!-- ═══════════════════════════════════════════════════════ RESULTS ══ -->
+<main class="results">
+
+  <div class="s-lbl">Resumen · <span id="cli-display" style="color:var(--txt2);font-size:10px">sin cliente</span></div>
+
+  <div class="totals-row">
+    <div class="tot-card tot-pvp">
+      <div class="tot-label">PVP mensual grupo</div>
+      <div class="tot-value" id="tot-pvp">—</div>
+      <div class="tot-sub" id="tot-pvp-local">—</div>
+    </div>
+    <div class="tot-card tot-cost">
+      <div class="tot-label">Coste mensual grupo</div>
+      <div class="tot-value" id="tot-cost">—</div>
+      <div class="tot-sub" id="tot-cost-local">—</div>
+    </div>
+    <div class="tot-card tot-margin">
+      <div class="tot-label">Margen bruto</div>
+      <div class="tot-value" id="tot-margin">—</div>
+      <div class="tot-sub" id="tot-margin-pct">—</div>
+      <div class="margin-bar-wrap"><div class="margin-bar" id="margin-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="s-lbl">Desglose recurrente mensual</div>
+  <div class="breakdown">
+    <table><thead><tr>
+      <th style="text-align:left">Concepto</th>
+      <th>Coste/local</th><th>PVP/local</th>
+      <th>Coste grupo</th><th class="pvp-col">PVP grupo</th>
+      <th class="margen-col">Margen</th>
+    </tr></thead><tbody id="tbody-rec"></tbody></table>
+    <div class="empty-msg" id="rec-empty">Activa productos en el panel izquierdo</div>
+  </div>
+
+  <div id="unico-section" style="display:none">
+    <div class="s-lbl">Coste único de arranque</div>
+    <div class="breakdown">
+      <table><thead><tr>
+        <th style="text-align:left">Concepto</th>
+        <th>Coste</th><th class="pvp-col">PVP</th><th class="margen-col">Margen</th>
+      </tr></thead><tbody id="tbody-unico"></tbody></table>
+    </div>
+  </div>
+
+  <div class="s-lbl">Ajuste manual de PVP <span class="info-chip" style="margin-left:8px">edita el PVP ajustado por línea</span></div>
+  <div class="breakdown">
+    <table><thead><tr>
+      <th style="text-align:left">Concepto</th>
+      <th>PVP calc.</th><th>PVP ajustado</th>
+      <th>Dto. %</th><th>Margen %</th><th>Estado</th>
+    </tr></thead><tbody id="tbody-adj"></tbody></table>
+    <div class="empty-msg" id="adj-empty">Sin líneas activas</div>
+  </div>
+
+  <div id="resumen-final" style="display:none">
+    <div class="s-lbl">Propuesta final</div>
+    <div class="totals-row">
+      <div class="tot-card tot-pvp">
+        <div class="tot-label">PVP final grupo/mes</div>
+        <div class="tot-value" id="fin-pvp">—</div>
+        <div class="tot-sub" id="fin-pvp-anual">—</div>
+      </div>
+      <div class="tot-card tot-cost">
+        <div class="tot-label">Coste grupo/mes</div>
+        <div class="tot-value" id="fin-cost">—</div>
+        <div class="tot-sub" id="fin-cost-local">—</div>
+      </div>
+      <div class="tot-card tot-margin">
+        <div class="tot-label">Margen final</div>
+        <div class="tot-value" id="fin-margin">—</div>
+        <div class="tot-sub" id="fin-margin-pct">—</div>
+        <div class="margin-bar-wrap"><div class="margin-bar" id="fin-margin-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div><!-- /layout -->
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN — edita solo estas constantes
+// ═══════════════════════════════════════════════════════════════════════
+const CLIENT_ID  = '514253756753-m0kp6mlconj95198dg1o1o9blsche7u8.apps.googleusercontent.com';
+const SHEET_ID   = '1WlA9ib78Lt0BideYzCR5oBGnWwO377-5';
+const SHEET_NAME = 'T2_precios'; // hoja principal de precios
+
+// Lista blanca de emails autorizados (añade/quita según el equipo)
+const ALLOWED_EMAILS = [
+  'comercial@mintt.es',
+  'admin@mintt.es',
+  // añade aquí los emails del equipo:
+  // 'nombre@mintt.es',
+];
+
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly';
+
+// ═══════════════════════════════════════════════════════════════════════
+// PRECIOS — se cargan desde Google Sheets (vacío hasta autenticar)
+// ═══════════════════════════════════════════════════════════════════════
+let P = {};  // se rellena con loadPrices()
+
+// ─ Defaults mientras carga ─
+const P_DEFAULTS = {
+  fibra_c:24,  fijo_c:5,
+  movil:{ C12:{c:6.53,p:7.90}, C20:{c:8.18,p:9.90}, C25:{c:9.01,p:10.90}, C50:{c:12.31,p:14.90} },
+  ivr_plat_c:15, ivr_rate:0.0437, ivr_grab_c:0.015, ivr_grab_p:0.030,
+  pbx_ext_c:2, pbx_ddi_c:15,
+  acd_ag_voz_c:30, acd_ag_cv_c:36, acd_sup_c:30,
+  ia_tramos:[
+    {desde:0,     hasta:50000,  nc_c:0.10,nc_p:0.25,ok_c:0.28,ok_p:0.45},
+    {desde:50001, hasta:100000, nc_c:0.09,nc_p:0.23,ok_c:0.26,ok_p:0.43},
+    {desde:100001,hasta:999999, nc_c:0.08,nc_p:0.20,ok_c:0.22,ok_p:0.40},
+  ],
+  ia_trans_c:0.015, ia_trans_p:0.030,
+  bb:{ 'BB-HOST':{c:0,p:0}, 'BB-STAFF':{c:32,p:79}, 'BB-MAITRE':{c:80,p:159} },
+  adhoc_conv_tel_c:0.158789, adhoc_conv_web_c:0.085924, adhoc_sms_c:0.02275,
+  sms_c:0.02275, rcs_c:0.07, n900f_c:0.05, n900m_c:0.09,
+  hw:{'2615':{c:133,p:166.25},'2612':{c:57.6,p:72},'gbx':{c:124.04,p:155.05},'cs540':{c:134.4,p:168},'setup':{c:6.42,p:0}},
+  horas:{ suelta:{c:14.46,p:60}, p10:{c:144.6,p:550}, p20:{c:289.2,p:1000} },
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// AUTH — Google Identity Services
+// ═══════════════════════════════════════════════════════════════════════
+let tokenClient;
+let currentUser = null;
+
+function signInWithGoogle(){
+  document.getElementById('l-loading').style.display='block';
+  document.getElementById('l-error').textContent='';
+
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: handleCredentialResponse,
+    auto_select: false,
+  });
+
+  // También usamos OAuth2 para Sheets
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: handleTokenResponse,
+  });
+
+  google.accounts.id.prompt((notification)=>{
+    if(notification.isNotDisplayed()||notification.isSkippedMoment()){
+      // Si el prompt de one-tap no aparece, usamos el flujo OAuth directo
+      tokenClient.requestAccessToken({prompt:'select_account'});
+    }
+  });
+}
+
+function handleCredentialResponse(response){
+  // Decodificar JWT del id_token
+  const payload = JSON.parse(atob(response.credential.split('.')[1]));
+  const email = payload.email;
+  checkEmailAndProceed(email, payload.name, payload.picture);
+  // Ahora pedir token de acceso para Sheets
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: handleTokenResponse,
+  });
+  tokenClient.requestAccessToken({prompt:''});
+}
+
+function handleTokenResponse(tokenResponse){
+  if(tokenResponse.error){
+    showError('Error de autenticación: '+tokenResponse.error);
+    return;
+  }
+  // Si no tenemos usuario aún (vino del flujo directo OAuth), obtener info del perfil
+  if(!currentUser){
+    fetch('https://www.googleapis.com/oauth2/v3/userinfo',{
+      headers:{Authorization:'Bearer '+tokenResponse.access_token}
+    })
+    .then(r=>r.json())
+    .then(info=>{
+      checkEmailAndProceed(info.email, info.name, info.picture);
+      if(currentUser) loadPricesFromSheet(tokenResponse.access_token);
+    });
+  } else {
+    loadPricesFromSheet(tokenResponse.access_token);
+  }
+}
+
+function checkEmailAndProceed(email, name, picture){
+  // Si la lista de emails está vacía, dejamos pasar a todos (útil en desarrollo)
+  const listEmpty = ALLOWED_EMAILS.filter(e=>e.includes('@mintt')).length === 0;
+  const allowed   = listEmpty || ALLOWED_EMAILS.map(e=>e.toLowerCase()).includes(email.toLowerCase());
+
+  if(!allowed){
+    showError(`Acceso denegado.\n${email} no está autorizado.\nContacta con el administrador.`);
+    document.getElementById('l-loading').style.display='none';
+    return;
+  }
+  currentUser = {email, name, picture};
+  document.getElementById('user-name-display').textContent = name || email;
+  if(picture) document.getElementById('user-photo').src = picture;
+}
+
+function showError(msg){
+  document.getElementById('l-error').textContent = msg;
+  document.getElementById('l-loading').style.display='none';
+}
+
+function signOut(){
+  google.accounts.id.disableAutoSelect();
+  currentUser = null;
+  P = {};
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('l-error').textContent='';
+  document.getElementById('l-loading').style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CARGAR PRECIOS DESDE GOOGLE SHEETS
+// ═══════════════════════════════════════════════════════════════════════
+function loadPricesFromSheet(accessToken){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('loading-screen').classList.add('show');
+
+  // Leer T2_precios (cols: producto_id, descripcion, tramo_desde, tramo_hasta, coste, pvp, margen, fecha, notas)
+  const range = encodeURIComponent(`T2_precios!A2:I100`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range}`;
+
+  fetch(url, { headers:{Authorization:'Bearer '+accessToken} })
+  .then(r=>{
+    if(!r.ok) throw new Error('No se pudo acceder al Sheet ('+r.status+'). Comprueba que el Sheet está compartido con tu cuenta.');
+    return r.json();
+  })
+  .then(data=>{
+    parsePrices(data.values||[]);
+    // Leer también T3_planes_bookybot
+    const range2 = encodeURIComponent('T3_planes_bookybot!A2:E4');
+    return fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${range2}`,
+      {headers:{Authorization:'Bearer '+accessToken}});
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    parseBBPlans(data.values||[]);
+    document.getElementById('loading-screen').classList.remove('show');
+    document.getElementById('app').classList.add('show');
+    recalc();
+  })
+  .catch(err=>{
+    document.getElementById('loading-screen').classList.remove('show');
+    document.getElementById('login-screen').classList.remove('hidden');
+    showError('Error cargando tarifas: '+err.message);
+    // Fallback a defaults para no bloquear
+    P = JSON.parse(JSON.stringify(P_DEFAULTS));
+    document.getElementById('loading-screen').classList.remove('show');
+    document.getElementById('app').classList.add('show');
+    recalc();
+  });
+}
+
+function n(v){ return parseFloat((v||'0').toString().replace(',','.'))||0; }
+
+function parsePrices(rows){
+  P = JSON.parse(JSON.stringify(P_DEFAULTS)); // parte de los defaults
+  rows.forEach(row=>{
+    if(!row[0]) return;
+    const id=row[0].trim(), coste=n(row[4]), pvp=n(row[5]), mg=n(row[6]);
+    switch(id){
+      case 'FIBRA-1G':  P.fibra_c=coste; break;
+      case 'FIJO-DDI':  P.fijo_c=coste; break;
+      case 'MOVIL-C12': P.movil.C12={c:coste,p:pvp||coste*(1+mg)}; break;
+      case 'MOVIL-C20': P.movil.C20={c:coste,p:pvp||coste*(1+mg)}; break;
+      case 'MOVIL-C25': P.movil.C25={c:coste,p:pvp||coste*(1+mg)}; break;
+      case 'MOVIL-C50': P.movil.C50={c:coste,p:pvp||coste*(1+mg)}; break;
+      case 'IVR-PLAT':  P.ivr_plat_c=coste; break;
+      case 'PBX-EXT':   P.pbx_ext_c=coste; break;
+      case 'PBX-DDI':   P.pbx_ddi_c=coste; break;
+      case 'ACD-AG-VOZ':P.acd_ag_voz_c=coste; break;
+      case 'ACD-AG-CV': P.acd_ag_cv_c=coste; break;
+      case 'ACD-SUP':   P.acd_sup_c=coste; break;
+      case 'IA-NC-T1':  P.ia_tramos[0].nc_c=coste; P.ia_tramos[0].nc_p=pvp; break;
+      case 'IA-NC-T2':  P.ia_tramos[1].nc_c=coste; P.ia_tramos[1].nc_p=pvp; break;
+      case 'IA-NC-T3':  P.ia_tramos[2].nc_c=coste; P.ia_tramos[2].nc_p=pvp; break;
+      case 'IA-OK-T1':  P.ia_tramos[0].ok_c=coste; P.ia_tramos[0].ok_p=pvp; break;
+      case 'IA-OK-T2':  P.ia_tramos[1].ok_c=coste; P.ia_tramos[1].ok_p=pvp; break;
+      case 'IA-OK-T3':  P.ia_tramos[2].ok_c=coste; P.ia_tramos[2].ok_p=pvp; break;
+      case 'IA-TRANS':  P.ia_trans_c=coste; P.ia_trans_p=pvp; break;
+      case 'SMS-CONF':  P.sms_c=coste; break;
+      case 'RCS-PROMO': P.rcs_c=coste; break;
+      case 'N900-FIJ':  P.n900f_c=coste; break;
+      case 'N900-MOV':  P.n900m_c=coste; break;
+      case 'HW-GRP2615':P.hw['2615']={c:coste,p:pvp}; break;
+      case 'HW-GRP2612':P.hw['2612']={c:coste,p:pvp}; break;
+      case 'HW-GBX20':  P.hw['gbx']={c:coste,p:pvp}; break;
+      case 'HW-AUR540': P.hw['cs540']={c:coste,p:pvp}; break;
+      case 'HW-SETUP':  P.hw['setup']={c:coste,p:pvp}; break;
+      case 'HORAS-SUEL':P.horas.suelta={c:coste,p:pvp}; break;
+      case 'HORAS-P10': P.horas.p10={c:coste,p:pvp}; break;
+      case 'HORAS-P20': P.horas.p20={c:coste,p:pvp}; break;
+    }
+  });
+}
+
+function parseBBPlans(rows){
+  rows.forEach(row=>{
+    if(!row[0]) return;
+    P.bb[row[0].trim()] = {c:n(row[2]), p:n(row[3])};
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// APP STATE + LÓGICA DE CÁLCULO
+// ═══════════════════════════════════════════════════════════════════════
+const state = {
+  blocks:{telco:true,ivr:false,pbx:false,acd:false,ia:false,bb:true,adhoc:false,sms:false,hw:false,horas:false},
+  adjValues:{}
+};
+
+Object.entries(state.blocks).forEach(([id,on])=>{
+  if(on){
+    document.getElementById('tog-'+id).classList.add('on');
+    document.getElementById('body-'+id).classList.add('open');
+  }
+});
+
+function toggleBlock(id){
+  state.blocks[id]=!state.blocks[id];
+  document.getElementById('tog-'+id).classList.toggle('on',state.blocks[id]);
+  document.getElementById('body-'+id).classList.toggle('open',state.blocks[id]);
+  recalc();
+}
+
+function fmt(n,dec=2){ return n.toLocaleString('es-ES',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'€'; }
+function fmtPct(n){ return n.toFixed(1)+'%'; }
+function v(id){ return parseFloat(document.getElementById(id)?.value)||0; }
+function chk(id){ return document.getElementById(id)?.checked||false; }
+function margen(p,c){ return p>0?((p-c)/p)*100:0; }
+function wm(c,m){ return c*(1+m/100); }
+function semClass(pct){ return pct>=25?'s-green':pct>=15?'s-orange':'s-red'; }
+function iaTramo(calls){ return P.ia_tramos?.find(t=>calls>=t.desde&&calls<=t.hasta)||P_DEFAULTS.ia_tramos[2]; }
+
+function recalc(){
+  if(!document.getElementById('app').classList.contains('show')) return;
+  const locales = Math.max(1,v('cli-locales'));
+  const mg = v('g-margen');
+  const nombre = document.getElementById('cli-nombre').value.trim();
+  document.getElementById('cli-display').textContent = nombre||'sin cliente';
+
+  const rec=[], unico=[];
+
+  // ─ TELCO ─
+  if(state.blocks.telco){
+    if(chk('chk-fibra')) rec.push({key:'fibra',label:'Fibra FTTH 1000Mb',c:P.fibra_c||24,p:wm(P.fibra_c||24,mg)});
+    if(chk('chk-fijo'))  rec.push({key:'fijo', label:'Fijo + DDI Geográfico',c:P.fijo_c||5,p:wm(P.fijo_c||5,mg)});
+    if(chk('chk-movil')){
+      const plan=document.getElementById('sel-movil').value;
+      const mp=P.movil?.[plan]||P_DEFAULTS.movil[plan];
+      const sims=Math.max(1,v('num-sims'));
+      rec.push({key:'movil',label:`Móvil ${plan} ×${sims} SIMs`,c:mp.c*sims,p:mp.p*sims});
+    }
+  }
+
+  // ─ IVR ─
+  if(state.blocks.ivr){
+    const calls=v('ivr-calls'),tmc=v('ivr-tmc'),rate=P.ivr_rate||0.0437,plat=P.ivr_plat_c||15;
+    const cIvr=plat+calls*tmc*rate;
+    rec.push({key:'ivr',label:'IVR (plataforma + llamadas)',c:cIvr,p:wm(cIvr,mg)});
+    if(chk('ivr-grab')){
+      const cG=calls*tmc*(P.ivr_grab_c||0.015);
+      rec.push({key:'ivr-grab',label:'IVR – Grabación',c:cG,p:calls*tmc*(P.ivr_grab_p||0.03)});
+    }
+  }
+
+  // ─ PBX ─
+  if(state.blocks.pbx){
+    const ext=Math.max(1,v('pbx-ext')),ddi=v('pbx-ddi');
+    const c=ext*(P.pbx_ext_c||2)+ddi*(P.pbx_ddi_c||15);
+    rec.push({key:'pbx',label:`PBX Virtual (${ext} ext.${ddi>0?` +${ddi} DDI`:''})`,c,p:wm(c,mg)});
+  }
+
+  // ─ ACD ─
+  if(state.blocks.acd){
+    const base=v('acd-base'),agV=v('acd-agvoz'),agC=v('acd-agcv'),sup=v('acd-sup');
+    const c=base+agV*(P.acd_ag_voz_c||30)+agC*(P.acd_ag_cv_c||36)+sup*(P.acd_sup_c||30);
+    if(c>0) rec.push({key:'acd',label:'ACD Virtual CC',c,p:wm(c,mg)});
+  }
+
+  // ─ IA ─
+  if(state.blocks.ia){
+    const calls=v('ia-calls'),pctNc=v('ia-pct-nc')/100,tmc=v('ia-tmc');
+    const nc=calls*pctNc,ok=calls*(1-pctNc);
+    const t=iaTramo(calls);
+    rec.push({key:'ia',label:`IA VoiceBot (${calls.toLocaleString('es-ES')} ll/mes)`,c:nc*t.nc_c+ok*t.ok_c,p:nc*t.nc_p+ok*t.ok_p});
+    if(chk('ia-trans')) rec.push({key:'ia-trans',label:'IA – Transcripción',c:calls*tmc*(P.ia_trans_c||0.015),p:calls*tmc*(P.ia_trans_p||0.03)});
+    const devIA=v('ia-dev');
+    if(devIA>0) unico.push({label:'IA – Desarrollo inicial',c:devIA,p:wm(devIA,mg)});
+  }
+
+  // ─ BOOKYBOT ─
+  if(state.blocks.bb){
+    const plan=document.getElementById('sel-bb').value;
+    const bp=P.bb?.[plan]||P_DEFAULTS.bb[plan]||{c:0,p:0};
+    const planName=document.getElementById('sel-bb').selectedOptions[0].text;
+    rec.push({key:'bb',label:'BookyBot · '+planName.split('(')[0].trim(),c:bp.c,p:bp.p>0?bp.p:wm(bp.c,mg)});
+  }
+
+  // ─ ADHOC ─
+  if(state.blocks.adhoc){
+    const devC=v('adhoc-dev-cost');
+    if(devC>0) unico.push({label:'Bot Adhoc – Construcción',c:devC,p:wm(devC,mg)});
+    const mesC=v('adhoc-mes-cost');
+    if(mesC>0) rec.push({key:'adhoc-mes',label:'Bot Adhoc – Cuota plataforma',c:mesC,p:wm(mesC,mg)});
+    const cConv=v('adhoc-conv-tel')*(P.adhoc_conv_tel_c||0.158789)+v('adhoc-conv-web')*(P.adhoc_conv_web_c||0.085924)+v('adhoc-sms')*(P.adhoc_sms_c||0.02275);
+    if(cConv>0) rec.push({key:'adhoc-conv',label:'Bot Adhoc – Conversaciones',c:cConv,p:wm(cConv,mg)});
+  }
+
+  // ─ SMS ─
+  if(state.blocks.sms){
+    const sv=v('sms-vol'),rv=v('rcs-vol'),nf=v('n900f-vol'),nm=v('n900m-vol');
+    if(sv>0) rec.push({key:'sms',label:`SMS conf. (${sv} msg)`,c:sv*(P.sms_c||0.02275),p:wm(sv*(P.sms_c||0.02275),mg)});
+    if(rv>0) rec.push({key:'rcs',label:`RCS promo. (${rv} msg)`,c:rv*(P.rcs_c||0.07),p:wm(rv*(P.rcs_c||0.07),mg)});
+    if(nf>0) rec.push({key:'n900f',label:`Num.900 fijo (${nf} min)`,c:nf*(P.n900f_c||0.05),p:wm(nf*(P.n900f_c||0.05),mg)});
+    if(nm>0) rec.push({key:'n900m',label:`Num.900 móvil (${nm} min)`,c:nm*(P.n900m_c||0.09),p:wm(nm*(P.n900m_c||0.09),mg)});
+  }
+
+  // ─ HARDWARE ─
+  if(state.blocks.hw){
+    [['hw-2615','2615','GRP2615'],['hw-2612','2612','GRP2612P'],['hw-gbx','gbx','GBX20'],['hw-cs540','cs540','CS540'],['hw-setup','setup','Setup']].forEach(([inp,key,name])=>{
+      const qty=v(inp);
+      if(qty>0){
+        const pr=P.hw?.[key]||P_DEFAULTS.hw[key];
+        unico.push({label:`${name} ×${qty}`,c:qty*pr.c,p:qty*(pr.p||wm(pr.c,mg))});
+      }
+    });
+  }
+
+  // ─ HORAS ─
+  if(state.blocks.horas){
+    const hs=v('h-sueltas'),hp10=v('h-p10'),hp20=v('h-p20');
+    if(hs>0)  unico.push({label:`Bolsa horas ×${hs}h`,c:hs*(P.horas?.suelta?.c||14.46),p:hs*(P.horas?.suelta?.p||60)});
+    if(hp10>0) unico.push({label:`Pack 10h ×${hp10}`,c:hp10*(P.horas?.p10?.c||144.6),p:hp10*(P.horas?.p10?.p||550)});
+    if(hp20>0) unico.push({label:`Pack 20h ×${hp20}`,c:hp20*(P.horas?.p20?.c||289.2),p:hp20*(P.horas?.p20?.p||1000)});
+  }
+
+  // ══ RENDER RECURRENTE ══
+  const tbR=document.getElementById('tbody-rec'); tbR.innerHTML='';
+  let totCL=0,totPL=0;
+  rec.forEach(row=>{
+    totCL+=row.c; totPL+=row.p;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${row.label}</td><td>${fmt(row.c)}</td><td class="pvp-col">${fmt(row.p)}</td><td>${fmt(row.c*locales)}</td><td class="pvp-col">${fmt(row.p*locales)}</td><td class="margen-col">${fmtPct(margen(row.p,row.c))}</td>`;
+    tbR.appendChild(tr);
+  });
+  if(rec.length){
+    const tr=document.createElement('tr'); tr.className='subtotal';
+    tr.innerHTML=`<td>Total recurrente / mes</td><td>${fmt(totCL)}</td><td class="pvp-col">${fmt(totPL)}</td><td>${fmt(totCL*locales)}</td><td class="pvp-col">${fmt(totPL*locales)}</td><td class="margen-col">${fmtPct(margen(totPL,totCL))}</td>`;
+    tbR.appendChild(tr);
+  }
+  document.getElementById('rec-empty').style.display=rec.length?'none':'block';
+
+  // ══ RENDER ÚNICO ══
+  const tbU=document.getElementById('tbody-unico'); tbU.innerHTML='';
+  unico.forEach(row=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${row.label} <span class="unico-tag">único</span></td><td>${fmt(row.c)}</td><td class="pvp-col">${fmt(row.p)}</td><td class="margen-col">${fmtPct(margen(row.p,row.c))}</td>`;
+    tbU.appendChild(tr);
+  });
+  document.getElementById('unico-section').style.display=unico.length?'block':'none';
+
+  // ══ RENDER AJUSTE ══
+  const allAdj=[...rec.map(r=>({...r,tipo:'rec'})),...unico.map(r=>({...r,key:r.label,tipo:'unico'}))];
+  const tbA=document.getElementById('tbody-adj'); tbA.innerHTML='';
+  allAdj.forEach(row=>{
+    const pvpCalc=row.p*(row.tipo==='rec'?locales:1);
+    if(!state.adjValues[row.key]) state.adjValues[row.key]=pvpCalc;
+    const pvpAdj=state.adjValues[row.key];
+    const dto=pvpCalc>0?((pvpCalc-pvpAdj)/pvpCalc*100):0;
+    const costBase=row.c*(row.tipo==='rec'?locales:1);
+    const mg_=margen(pvpAdj,costBase);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${row.label}</td><td>${fmt(pvpCalc)}</td><td><input type="number" class="adj-input" value="${pvpAdj.toFixed(2)}" min="0" step="0.01" data-key="${row.key}" style="width:85px;padding:4px 6px;font-size:11px;background:var(--surf2);border:1px solid var(--brd);color:var(--txt);border-radius:3px;font-family:var(--mono);text-align:right;outline:none" onchange="updateAdj(this)"></td><td style="color:${dto>0?'var(--orange)':'var(--txt2)'}">${dto.toFixed(1)}%</td><td>${fmtPct(mg_)}</td><td><span class="semaforo ${semClass(mg_)}"></span>${fmtPct(mg_)}</td>`;
+    tbA.appendChild(tr);
+  });
+  document.getElementById('adj-empty').style.display=allAdj.length?'none':'block';
+
+  // ══ TOTALES ══
+  const tCG=totCL*locales,tPG=totPL*locales,tMg=margen(tPG,tCG);
+  document.getElementById('tot-pvp').textContent=fmt(tPG);
+  document.getElementById('tot-pvp-local').textContent=fmt(totPL)+' / local';
+  document.getElementById('tot-cost').textContent=fmt(tCG);
+  document.getElementById('tot-cost-local').textContent=fmt(totCL)+' / local';
+  document.getElementById('tot-margin').textContent=fmt(tPG-tCG);
+  document.getElementById('tot-margin-pct').textContent=fmtPct(tMg)+' margen bruto';
+  document.getElementById('margin-bar').style.width=Math.min(tMg,100)+'%';
+
+  // ══ RESUMEN FINAL ══
+  let finP=0,finC=0;
+  allAdj.forEach(row=>{
+    finP+=state.adjValues[row.key]||0;
+    finC+=row.c*(row.tipo==='rec'?locales:1);
+  });
+  if(allAdj.length){
+    document.getElementById('resumen-final').style.display='block';
+    const fMg=margen(finP,finC);
+    document.getElementById('fin-pvp').textContent=fmt(finP);
+    document.getElementById('fin-pvp-anual').textContent=fmt(finP*12)+' /año';
+    document.getElementById('fin-cost').textContent=fmt(finC);
+    document.getElementById('fin-cost-local').textContent=locales>0?fmt(finC/locales)+' /local':'';
+    document.getElementById('fin-margin').textContent=fmt(finP-finC);
+    document.getElementById('fin-margin-pct').textContent=fmtPct(fMg)+' margen final';
+    document.getElementById('fin-margin-bar').style.width=Math.min(fMg,100)+'%';
+  } else {
+    document.getElementById('resumen-final').style.display='none';
+  }
+}
+
+function updateAdj(input){
+  state.adjValues[input.dataset.key]=parseFloat(input.value)||0;
+  recalc();
+}
+</script>
+</body>
+</html>
