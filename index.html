@@ -341,6 +341,11 @@ tbody tr.subtotal td{font-weight:500;border-top:1px solid var(--brd2);color:var(
       </div>
       <div class="field"><span class="field-label">SIMs por local</span><input type="number" id="num-sims" value="3" min="1" max="20" oninput="recalc()"></div>
     </div>
+    <div class="field"><span class="field-label">Numeración 900</span><input type="checkbox" id="chk-900" onchange="document.getElementById('n900-opts').style.display=this.checked?'block':'none';recalc()"></div>
+    <div id="n900-opts" style="display:none">
+      <div class="field"><span class="field-label">Min. entrante fijo/mes</span><input type="number" id="n900f-vol" value="0" min="0" oninput="recalc()"></div>
+      <div class="field"><span class="field-label">Min. entrante móvil/mes</span><input type="number" id="n900m-vol" value="0" min="0" oninput="recalc()"></div>
+    </div>
   </div></div>
 
   <!-- IVR -->
@@ -401,12 +406,24 @@ tbody tr.subtotal td{font-weight:500;border-top:1px solid var(--brd2);color:var(
   </div></div>
 
   <!-- SMS -->
-  <div class="block"><div class="block-head" onclick="toggleBlock('sms')"><div class="block-title"><span class="block-badge b-sms">SMS</span>SMS / RCS / Nº900</div><div class="block-toggle" id="tog-sms"></div></div>
+  <div class="block"><div class="block-head" onclick="toggleBlock('sms')"><div class="block-title"><span class="block-badge b-sms">SMS</span>SMS / RCS</div><div class="block-toggle" id="tog-sms"></div></div>
   <div class="block-body" id="body-sms">
-    <div class="field"><span class="field-label">SMS/mes confirmación</span><input type="number" id="sms-vol" value="0" min="0" oninput="recalc()"></div>
-    <div class="field"><span class="field-label">RCS/mes promocional</span><input type="number" id="rcs-vol" value="0" min="0" oninput="recalc()"></div>
-    <div class="field"><span class="field-label">Min. 900 fijo/mes</span><input type="number" id="n900f-vol" value="0" min="0" oninput="recalc()"></div>
-    <div class="field"><span class="field-label">Min. 900 móvil/mes</span><input type="number" id="n900m-vol" value="0" min="0" oninput="recalc()"></div>
+    <div style="padding:4px 0 6px;font-size:11px;color:var(--txt3);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase">SMS</div>
+    <div class="field"><span class="field-label">Modalidad SMS</span>
+      <select id="sel-sms-tipo" onchange="recalc()">
+        <option value="pospago">Pospago</option>
+        <option value="prepago">Prepago</option>
+      </select>
+    </div>
+    <div class="field"><span class="field-label">SMS/mes</span><input type="number" id="sms-vol" value="0" min="0" oninput="recalc()"></div>
+    <div style="padding:8px 0 6px;font-size:11px;color:var(--txt3);font-family:var(--mono);letter-spacing:.06em;text-transform:uppercase">RCS</div>
+    <div class="field"><span class="field-label">Modalidad RCS</span>
+      <select id="sel-rcs-tipo" onchange="recalc()">
+        <option value="pospago">Pospago</option>
+        <option value="prepago">Prepago</option>
+      </select>
+    </div>
+    <div class="field"><span class="field-label">RCS/mes</span><input type="number" id="rcs-vol" value="0" min="0" oninput="recalc()"></div>
   </div></div>
 
   <!-- Hardware -->
@@ -520,11 +537,8 @@ const SHEET_NAME = 'T2_precios'; // hoja principal de precios
 
 // Lista blanca de emails autorizados (añade/quita según el equipo)
 const ALLOWED_EMAILS = [
-  'administracion@mintt.es',
-  'adesantaclara@mintt.es',
-  'ahervas@mintt.es',
-  'mlopez@mintt.es',
-  'dfernandez@mintt.es',
+  'comercial@mintt.es',
+  'admin@mintt.es',
   // añade aquí los emails del equipo:
   // 'nombre@mintt.es',
 ];
@@ -765,7 +779,8 @@ function toggleBlock(id){
   recalc();
 }
 
-function fmt(n,dec=2){ return n.toLocaleString('es-ES',{minimumFractionDigits:dec,maximumFractionDigits:dec})+'€'; }
+function fmt(n,dec=2){ return n.toLocaleString('es-ES',{minimumFractionDigits:dec,maximumFractionDigits:dec,useGrouping:true})+'€'; }
+function fmtNum(n){ return n.toLocaleString('es-ES',{useGrouping:true}); }
 function fmtPct(n){ return n.toFixed(1)+'%'; }
 function v(id){ return parseFloat(document.getElementById(id)?.value)||0; }
 function chk(id){ return document.getElementById(id)?.checked||false; }
@@ -825,7 +840,7 @@ function recalc(){
     const calls=v('ia-calls'),pctNc=v('ia-pct-nc')/100,tmc=v('ia-tmc');
     const nc=calls*pctNc,ok=calls*(1-pctNc);
     const t=iaTramo(calls);
-    rec.push({key:'ia',label:`IA VoiceBot (${calls.toLocaleString('es-ES')} ll/mes)`,c:nc*t.nc_c+ok*t.ok_c,p:nc*t.nc_p+ok*t.ok_p});
+    rec.push({key:'ia',label:`IA VoiceBot (${fmtNum(calls)} ll/mes)`,c:nc*t.nc_c+ok*t.ok_c,p:nc*t.nc_p+ok*t.ok_p});
     if(chk('ia-trans')) rec.push({key:'ia-trans',label:'IA – Transcripción',c:calls*tmc*(P.ia_trans_c||0.015),p:calls*tmc*(P.ia_trans_p||0.03)});
     const devIA=v('ia-dev');
     if(devIA>0) unico.push({label:'IA – Desarrollo inicial',c:devIA,p:wm(devIA,mg)});
@@ -849,13 +864,20 @@ function recalc(){
     if(cConv>0) rec.push({key:'adhoc-conv',label:'Bot Adhoc – Conversaciones',c:cConv,p:wm(cConv,mg)});
   }
 
-  // ─ SMS ─
+  // ─ N900 (dentro de Telco) ─
+  if(state.blocks.telco && chk('chk-900')){
+    const nf=v('n900f-vol'),nm=v('n900m-vol');
+    if(nf>0) rec.push({key:'n900f',label:`Num.900 fijo (${fmtNum(nf)} min)`,c:nf*(P.n900f_c||0.05),p:wm(nf*(P.n900f_c||0.05),mg)});
+    if(nm>0) rec.push({key:'n900m',label:`Num.900 móvil (${fmtNum(nm)} min)`,c:nm*(P.n900m_c||0.09),p:wm(nm*(P.n900m_c||0.09),mg)});
+  }
+
+  // ─ SMS / RCS ─
   if(state.blocks.sms){
-    const sv=v('sms-vol'),rv=v('rcs-vol'),nf=v('n900f-vol'),nm=v('n900m-vol');
-    if(sv>0) rec.push({key:'sms',label:`SMS conf. (${sv} msg)`,c:sv*(P.sms_c||0.02275),p:wm(sv*(P.sms_c||0.02275),mg)});
-    if(rv>0) rec.push({key:'rcs',label:`RCS promo. (${rv} msg)`,c:rv*(P.rcs_c||0.07),p:wm(rv*(P.rcs_c||0.07),mg)});
-    if(nf>0) rec.push({key:'n900f',label:`Num.900 fijo (${nf} min)`,c:nf*(P.n900f_c||0.05),p:wm(nf*(P.n900f_c||0.05),mg)});
-    if(nm>0) rec.push({key:'n900m',label:`Num.900 móvil (${nm} min)`,c:nm*(P.n900m_c||0.09),p:wm(nm*(P.n900m_c||0.09),mg)});
+    const sv=v('sms-vol'),rv=v('rcs-vol');
+    const sTipo=document.getElementById('sel-sms-tipo')?.value||'pospago';
+    const rTipo=document.getElementById('sel-rcs-tipo')?.value||'pospago';
+    if(sv>0) rec.push({key:'sms',label:`SMS ${sTipo} (${fmtNum(sv)} msg)`,c:sv*(P.sms_c||0.02275),p:wm(sv*(P.sms_c||0.02275),mg)});
+    if(rv>0) rec.push({key:'rcs',label:`RCS ${rTipo} (${fmtNum(rv)} msg)`,c:rv*(P.rcs_c||0.07),p:wm(rv*(P.rcs_c||0.07),mg)});
   }
 
   // ─ HARDWARE ─
