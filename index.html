@@ -257,6 +257,39 @@ tbody tr.subtotal td{font-weight:500;border-top:1px solid var(--brd2);color:var(
   font-size:11px!important;background:var(--surf2)!important;
 }
 
+
+/* ── LIGHT MODE ── */
+body.light {
+  --bg:#F5F5F0; --surf:#FFFFFF; --surf2:#F0EFE8; --surf3:#E8E7E0;
+  --brd:#D8D5C8; --brd2:#C8C5B8;
+  --gold:#9A7830; --gold2:#7A5820; --gold-d:#C9A84C; --gold-bg:#FDF8EE;
+  --green:#2A7A50; --green-d:#1A5A38; --green-bg:#EDF7F2;
+  --orange:#B05A10; --orange-d:#904808; --orange-bg:#FEF3E8;
+  --red:#B03020; --red-d:#901808; --red-bg:#FEF0EE;
+  --blue:#1A6A9A; --blue-bg:#EDF4FB;
+  --txt:#1A1A14; --txt2:#5A5A48; --txt3:#9A9A88;
+}
+body.light header { background:#FFFFFF; border-bottom:1px solid #D8D5C8; }
+body.light .sidebar { background:#FFFFFF; border-right:1px solid #D8D5C8; }
+body.light .client-block { background:#F5F5F0; }
+body.light .block-head:hover { background:#F0EFE8; }
+body.light .breakdown { background:#FFFFFF; }
+body.light tbody tr:hover td { background:rgba(154,120,48,.06); }
+body.light thead th { background:#F5F5F0; }
+body.light .tot-card { background:#FFFFFF; }
+body.light #login-screen { background:#F5F5F0; }
+body.light .login-box { background:#FFFFFF; border-color:#D8D5C8; }
+body.light #loading-screen { background:#F5F5F0; }
+
+/* theme toggle button */
+.theme-btn {
+  background: none; border: 1px solid var(--brd);
+  color: var(--txt2); padding: 4px 9px; border-radius: 4px;
+  cursor: pointer; font-family: var(--mono); font-size: 11px;
+  letter-spacing: .04em; transition: all .15s; line-height: 1;
+}
+.theme-btn:hover { border-color: var(--gold-d); color: var(--txt); }
+
 @media(max-width:900px){
   .layout{grid-template-columns:1fr}
   .sidebar{position:static;height:auto}
@@ -308,6 +341,7 @@ tbody tr.subtotal td{font-weight:500;border-top:1px solid var(--brd2);color:var(
     </div>
     <div class="user-avatar"><img id="user-photo" src="" alt=""></div>
     <span class="user-name" id="user-name-display">—</span>
+    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Cambiar tema">☀</button>
     <button class="btn-logout" onclick="signOut()">Salir</button>
   </div>
 </header>
@@ -643,6 +677,32 @@ const P_DEFAULTS = {
   hw:{'2615':{c:133,p:166.25},'2612':{c:57.6,p:72},'gbx':{c:124.04,p:155.05},'cs540':{c:134.4,p:168},'setup':{c:6.42,p:0}},
   horas:{ suelta:{c:14.46,p:60}, p10:{c:144.6,p:550}, p20:{c:289.2,p:1000} },
 };
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// TEMA CLARO / OSCURO
+// ═══════════════════════════════════════════════════════════════════════
+function initTheme(){
+  const saved = localStorage.getItem('mintt_theme') || 'dark';
+  applyTheme(saved);
+}
+function applyTheme(mode){
+  if(mode === 'light'){
+    document.body.classList.add('light');
+    const btn = document.getElementById('theme-btn');
+    if(btn) btn.textContent = '🌙';
+  } else {
+    document.body.classList.remove('light');
+    const btn = document.getElementById('theme-btn');
+    if(btn) btn.textContent = '☀';
+  }
+  localStorage.setItem('mintt_theme', mode);
+}
+function toggleTheme(){
+  const isLight = document.body.classList.contains('light');
+  applyTheme(isLight ? 'dark' : 'light');
+}
+initTheme();
 
 // ═══════════════════════════════════════════════════════════════════════
 // AUTH — Google Identity Services
