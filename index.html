@@ -263,6 +263,9 @@ tbody tr.subtotal td{font-weight:500;border-top:1px solid var(--brd2);color:var(
   .totals-row{grid-template-columns:1fr}
 }
 </style>
+<!-- PptxGenJS + docx for proposal generation -->
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
 </head>
 <body>
 
@@ -444,6 +447,17 @@ tbody tr.subtotal td{font-weight:500;border-top:1px solid var(--brd2);color:var(
     <div class="field"><span class="field-label">Pack 20h</span><input type="number" id="h-p20" value="0" min="0" oninput="recalc()"></div>
   </div></div>
 
+  <!-- ROI -->
+  <div class="block" id="blk-roi"><div class="block-head" onclick="toggleBlock('roi')"><div class="block-title"><span class="block-badge b-bot">ROI</span>Simulación de ahorro</div><div class="block-toggle" id="tog-roi"></div></div>
+  <div class="block-body" id="body-roi">
+    <div style="padding:4px 0 8px;font-size:11px;color:var(--txt3)">Datos actuales del cliente:</div>
+    <div class="field"><span class="field-label">Coste minuto humano (€)</span><input type="number" id="roi-cmin" value="0.29" min="0" step="0.01" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Tiempo medio gestión (min)</span><input type="number" id="roi-tmed" value="5" min="1" step="0.5" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Conversaciones/mes</span><input type="number" id="roi-conv" value="4000" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Nº agentes actuales</span><input type="number" id="roi-agentes" value="5" min="0" oninput="recalc()"></div>
+    <div class="field"><span class="field-label">Coste agente/mes (€)</span><input type="number" id="roi-cagente" value="2500" min="0" oninput="recalc()"></div>
+  </div></div>
+
 </aside>
 
 <!-- ═══════════════════════════════════════════════════════ RESULTS ══ -->
@@ -501,6 +515,38 @@ tbody tr.subtotal td{font-weight:500;border-top:1px solid var(--brd2);color:var(
     <div class="empty-msg" id="adj-empty">Sin líneas activas</div>
   </div>
 
+  <div id="roi-section" style="display:none">
+    <div class="s-lbl">Simulación de ahorro y ROI</div>
+    <div class="breakdown">
+      <table>
+        <thead><tr><th style="text-align:left">Concepto</th><th>Situación actual</th><th class="pvp-col">Con mintt</th><th class="margen-col">Ahorro</th></tr></thead>
+        <tbody id="tbody-roi"></tbody>
+      </table>
+    </div>
+    <div class="totals-row" style="grid-template-columns:1fr 1fr 1fr 1fr">
+      <div class="tot-card" style="border-color:var(--red-d)">
+        <div class="tot-label">Coste actual/mes</div>
+        <div class="tot-value" id="roi-coste-actual" style="color:var(--red)">—</div>
+        <div class="tot-sub">servicio con humanos</div>
+      </div>
+      <div class="tot-card tot-margin">
+        <div class="tot-label">Ahorro mensual</div>
+        <div class="tot-value" id="roi-ahorro-mes">—</div>
+        <div class="tot-sub" id="roi-ahorro-pct">—% ahorro</div>
+      </div>
+      <div class="tot-card" style="border-color:var(--blue-bg)">
+        <div class="tot-label">Ahorro anual</div>
+        <div class="tot-value" id="roi-ahorro-anual" style="color:var(--blue)">—</div>
+        <div class="tot-sub" id="roi-roi-meses">retorno en — meses</div>
+      </div>
+      <div class="tot-card" style="border-color:var(--gold-d)">
+        <div class="tot-label">TIR estimada</div>
+        <div class="tot-value" id="roi-tir" style="color:var(--gold)">—</div>
+        <div class="tot-sub" id="roi-vna">VNA —€</div>
+      </div>
+    </div>
+  </div>
+
   <div id="resumen-final" style="display:none">
     <div class="s-lbl">Propuesta final</div>
     <div class="totals-row">
@@ -520,6 +566,35 @@ tbody tr.subtotal td{font-weight:500;border-top:1px solid var(--brd2);color:var(
         <div class="tot-sub" id="fin-margin-pct">—</div>
         <div class="margin-bar-wrap"><div class="margin-bar" id="fin-margin-bar" style="width:0%"></div></div>
       </div>
+    </div>
+  </div>
+
+
+  <!-- GENERAR PROPUESTA -->
+  <div id="gen-section" style="margin-top:28px;display:none">
+    <div class="s-lbl">Generar propuesta</div>
+    <div style="background:var(--surf);border:1px solid var(--brd);border-radius:4px;padding:20px 22px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+        <div class="client-field"><label>Comercial responsable</label><input type="text" id="gen-comercial" placeholder="Nombre y apellido..." style="width:100%;background:var(--surf3);border:1px solid var(--brd);color:var(--txt);padding:6px 9px;border-radius:3px;font-family:var(--sans);font-size:12px;outline:none"></div>
+        <div class="client-field"><label>Email comercial</label><input type="text" id="gen-email" placeholder="email@mintt.es..." style="width:100%;background:var(--surf3);border:1px solid var(--brd);color:var(--txt);padding:6px 9px;border-radius:3px;font-family:var(--sans);font-size:12px;outline:none"></div>
+        <div class="client-field"><label>Teléfono comercial</label><input type="text" id="gen-telefono" placeholder="+34 ..." style="width:100%;background:var(--surf3);border:1px solid var(--brd);color:var(--txt);padding:6px 9px;border-radius:3px;font-family:var(--sans);font-size:12px;outline:none"></div>
+        <div class="client-field"><label>Validez de la oferta</label>
+          <select id="gen-validez" style="width:100%;background:var(--surf3);border:1px solid var(--brd);color:var(--txt);padding:6px 9px;border-radius:3px;font-family:var(--sans);font-size:12px;outline:none">
+            <option value="1 mes">1 mes</option>
+            <option value="15 días">15 días</option>
+            <option value="2 meses">2 meses</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button onclick="generarPPTX()" style="flex:1;min-width:160px;background:var(--gold);color:#0d0d0b;border:none;padding:12px 20px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:opacity .15s" onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+          ⬇ Descargar PowerPoint
+        </button>
+        <button onclick="generarDOCX()" style="flex:1;min-width:160px;background:var(--surf2);color:var(--txt);border:1px solid var(--brd2);padding:12px 20px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:all .15s" onmouseover="this.style.borderColor='var(--gold-d)'" onmouseout="this.style.borderColor='var(--brd2)'">
+          ⬇ Descargar Word
+        </button>
+      </div>
+      <div id="gen-status" style="margin-top:10px;font-size:11px;color:var(--txt3);font-family:var(--mono);display:none"></div>
     </div>
   </div>
 
@@ -760,7 +835,7 @@ function parseBBPlans(rows){
 // APP STATE + LÓGICA DE CÁLCULO
 // ═══════════════════════════════════════════════════════════════════════
 const state = {
-  blocks:{telco:true,ivr:false,pbx:false,acd:false,ia:false,bb:true,adhoc:false,sms:false,hw:false,horas:false},
+  blocks:{telco:true,ivr:false,pbx:false,acd:false,ia:false,bb:true,adhoc:false,sms:false,hw:false,horas:false,roi:false},
   adjValues:{},
   adjCalc:{}
 };
@@ -950,6 +1025,43 @@ function recalc(){
   });
   document.getElementById('adj-empty').style.display=allAdj.length?'none':'block';
 
+
+  // ══ ROI ══
+  const roiActive = state.blocks.roi && (state.blocks.ia || state.blocks.bb || state.blocks.adhoc);
+  document.getElementById('roi-section').style.display = roiActive ? 'block' : 'none';
+  if(roiActive){
+    const cMin=v('roi-cmin'), tMed=v('roi-tmed'), conv=v('roi-conv');
+    const agentes=v('roi-agentes'), cAgente=v('roi-cagente');
+    const costoHumanoMes = Math.max(conv*tMed*cMin, agentes*cAgente);
+    // Coste con mintt = PVP mensual del grupo
+    const costoMinttMes = totPL*locales;
+    const ahorroMes = costoHumanoMes - costoMinttMes;
+    const ahorroAnual = ahorroMes * 12;
+    const ahorroAnualPct = costoHumanoMes>0?(ahorroMes/costoHumanoMes*100):0;
+    // Inversión inicial (costes únicos)
+    const invInicial = unico.reduce((a,r)=>a+r.p,0);
+    // ROI en meses
+    const roiMeses = ahorroMes>0 ? Math.ceil(invInicial/ahorroMes) : 0;
+    // TIR aproximada (simplificada: ahorro anual / inversión)
+    const tirEst = invInicial>0 ? (ahorroAnual/invInicial)*100 : 0;
+    // VNA a 5% (12 meses)
+    let vna = -invInicial;
+    for(let i=1;i<=12;i++) vna += ahorroMes/Math.pow(1.05/12+1,i);
+
+    const tbRoi = document.getElementById('tbody-roi');
+    tbRoi.innerHTML = `
+      <tr><td>Coste de atención</td><td>${fmt(costoHumanoMes)}</td><td class="pvp-col">${fmt(costoMinttMes)}</td><td class="margen-col">${fmt(Math.max(0,ahorroMes))}</td></tr>
+      <tr><td>Agentes necesarios (estimado)</td><td>${agentes}</td><td class="pvp-col">${Math.max(0,Math.ceil(agentes*(1-ahorroAnualPct/100)))}</td><td class="margen-col">—</td></tr>
+    `;
+    document.getElementById('roi-coste-actual').textContent = fmt(costoHumanoMes);
+    document.getElementById('roi-ahorro-mes').textContent   = fmt(Math.max(0,ahorroMes));
+    document.getElementById('roi-ahorro-pct').textContent   = fmtPct(Math.max(0,ahorroAnualPct))+' ahorro';
+    document.getElementById('roi-ahorro-anual').textContent = fmt(Math.max(0,ahorroAnual));
+    document.getElementById('roi-roi-meses').textContent    = roiMeses>0?`retorno en ${roiMeses} meses`:'sin inversión inicial';
+    document.getElementById('roi-tir').textContent          = fmtPct(Math.max(0,tirEst));
+    document.getElementById('roi-vna').textContent          = 'VNA '+fmt(vna);
+  }
+
   // ══ TOTALES ══
   const tCG=totCL*locales,tPG=totPL*locales,tMg=margen(tPG,tCG);
   document.getElementById('tot-pvp').textContent=fmt(tPG);
@@ -979,12 +1091,525 @@ function recalc(){
   } else {
     document.getElementById('resumen-final').style.display='none';
   }
+  document.getElementById('gen-section').style.display = allAdj.length ? 'block' : 'none';
 }
 
 function updateAdj(input){
   state.adjValues[input.dataset.key]=parseFloat(input.value)||0;
   recalc();
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// DATOS FIJOS DE MINTT — textos extraídos de documentos oficiales
+// ═══════════════════════════════════════════════════════════════════════
+const MINTT = {
+  tagline: 'Conectamos tu empresa con tus clientes',
+  direccion1: 'Av. Leonardo Da Vinci 8, Ed. Alaja · 28906 Getafe, Madrid',
+  direccion2: 'c/ Sófora 15 · 28020 Madrid',
+  telefono: '+34 722 52 72 59',
+  email_gen: 'info@mintt.es',
+  condiciones: [
+    'Esta oferta tiene una validez de {VALIDEZ} desde la fecha que aparece en la portada.',
+    'Los precios NO incluyen el IVA.',
+    'Facturación mensual: cada mes se factura la cuota fija más el consumo real del mes anterior. La factura se emite el día 1 del mes.',
+    'Forma de pago: recibo domiciliado en la cuenta bancaria del cliente. El recibo se emite el día 15 del mes.',
+    'Facturación por construcción (si aplica): 50% a la firma del contrato. 50% una vez finalizada la construcción y validada por el cliente.',
+  ],
+  descripciones: {
+    'Fibra FTTH 1000Mb': 'Conectividad de fibra óptica de alta velocidad (1 Gbps simétrico) con redundancia y SLA garantizado.',
+    'Fijo + DDI Geográfico': 'Línea fija con número geográfico nacional para cada local. Incluye llamadas entrantes ilimitadas.',
+    'Móvil': 'Líneas móviles con tarifa de datos y llamadas ilimitadas. Plan adaptado al volumen del grupo.',
+    'IVR': 'Sistema IVR avanzado con reconocimiento de voz (ASR) y síntesis (TTS). Creación de árboles de decisión, enrutamiento inteligente y estadísticas por nodo.',
+    'PBX Virtual': 'Centralita virtual en la nube, flexible y escalable. Compatible con Microsoft Teams. Incluye extensiones, colas ACD, grabación, CDRs y fichajes.',
+    'ACD Virtual CC': 'Contact Center en la nube con agentes WebRTC. Supervisión en tiempo real, estadísticas avanzadas e integración con CRM.',
+    'IA VoiceBot': 'Agente virtual con IA generativa para atención telefónica automática 24x7. Reconocimiento de intenciones, multiidioma, integración con sistemas del cliente.',
+    'BookyBot': 'Bot especializado en reservas para restauración. Gestión de reservas, modificaciones, cancelaciones y notificaciones automáticas.',
+    'Bot Adhoc': 'Bot conversacional a medida desarrollado según las necesidades específicas del cliente. Multicanal: teléfono, webchat y WhatsApp.',
+    'SMS': 'Plataforma de envío masivo de SMS con conexión directa a operadores. API de integración, analytics en tiempo real y editor de Landing Pages.',
+    'RCS': 'Mensajería enriquecida (RCS) con imágenes, botones y seguimiento de interacción.',
+    'Numeración 900': 'Números de red inteligente 900 para atención gratuita al cliente. Disponible para fijo y móvil con estadísticas de llamadas.',
+    'Terminales': 'Terminales IP Grandstream de alta calidad. Incluye setup, instalación y formación.',
+    'Bolsa de horas': 'Horas de consultoría, desarrollo e integración a cargo del equipo técnico de mintt. Tarifa preferencial.',
+  }
+};
+
+function getPropuestaData() {
+  const locales = Math.max(1, v('cli-locales'));
+  const mg = v('g-margen');
+  const cliente = document.getElementById('cli-nombre').value.trim() || 'Cliente';
+  const sector  = document.getElementById('cli-sector').value.trim() || '';
+  const comercial = document.getElementById('gen-comercial').value.trim() || 'Equipo comercial mintt';
+  const email   = document.getElementById('gen-email').value.trim() || 'info@mintt.es';
+  const telefono= document.getElementById('gen-telefono').value.trim() || '+34 722 52 72 59';
+  const validez = document.getElementById('gen-validez').value || '1 mes';
+  const fecha   = new Date().toLocaleDateString('es-ES', {day:'numeric',month:'long',year:'numeric'});
+
+  // Collect active lines from adjValues
+  const allAdj2 = [];
+  document.querySelectorAll('#tbody-adj tr').forEach(tr => {
+    const tds = tr.querySelectorAll('td');
+    if(tds.length < 6) return;
+    const concepto = tds[0].textContent.trim();
+    const pvpCalc  = tds[1].textContent.trim();
+    const pvpAdj   = tds[2].querySelector('input')?.value || tds[2].textContent.trim();
+    const dto      = tds[3].textContent.trim();
+    const margenPct= tds[4].textContent.trim();
+    allAdj2.push({concepto, pvpCalc, pvpAdj: parseFloat(pvpAdj)||0, dto, margenPct});
+  });
+
+  // Unique items (from tbody-unico)
+  const unicoItems = [];
+  document.querySelectorAll('#tbody-unico tr').forEach(tr => {
+    const tds = tr.querySelectorAll('td');
+    if(tds.length < 3) return;
+    unicoItems.push({
+      concepto: tds[0].textContent.replace('único','').trim(),
+      coste: tds[1].textContent.trim(),
+      pvp: tds[2].textContent.trim()
+    });
+  });
+
+  // ROI data
+  let roiData = null;
+  if(document.getElementById('roi-section').style.display !== 'none'){
+    roiData = {
+      costoActual: document.getElementById('roi-coste-actual').textContent,
+      ahorroMes:   document.getElementById('roi-ahorro-mes').textContent,
+      ahorroAnual: document.getElementById('roi-ahorro-anual').textContent,
+      ahorroAnualPct: document.getElementById('roi-ahorro-pct').textContent,
+      roiMeses:    document.getElementById('roi-roi-meses').textContent,
+      tir:         document.getElementById('roi-tir').textContent,
+      vna:         document.getElementById('roi-vna').textContent,
+      cMin:        v('roi-cmin'),
+      tMed:        v('roi-tmed'),
+      conv:        v('roi-conv'),
+      agentes:     v('roi-agentes'),
+      cAgente:     v('roi-cagente'),
+    };
+  }
+
+  // Active product descriptions
+  const productosActivos = [];
+  document.querySelectorAll('#tbody-rec tr:not(.subtotal)').forEach(tr => {
+    const concepto = tr.querySelector('td')?.textContent?.trim() || '';
+    // Match to description key
+    const key = Object.keys(MINTT.descripciones).find(k => concepto.toLowerCase().includes(k.toLowerCase()));
+    const desc = key ? MINTT.descripciones[key] : '';
+    if(concepto) productosActivos.push({concepto, desc});
+  });
+
+  // Totals
+  const totPvpMes  = document.getElementById('tot-pvp').textContent;
+  const totCostMes = document.getElementById('tot-cost').textContent;
+  const totMargen  = document.getElementById('tot-margin').textContent;
+  const finPvp     = document.getElementById('fin-pvp').textContent;
+  const finPvpAnual= document.getElementById('fin-pvp-anual').textContent;
+
+  return {cliente, sector, comercial, email, telefono, validez, fecha,
+          locales, allAdj2, unicoItems, roiData, productosActivos,
+          totPvpMes, totCostMes, totMargen, finPvp, finPvpAnual};
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GENERADOR POWERPOINT
+// ═══════════════════════════════════════════════════════════════════════
+function generarPPTX(){
+  const st = document.getElementById('gen-status');
+  st.style.display='block'; st.textContent='Generando PowerPoint...';
+  try {
+    const d = getPropuestaData();
+    const pres = new PptxGenJS();
+    pres.layout = 'LAYOUT_16x9';
+    pres.title  = `Propuesta mintt · ${d.cliente}`;
+
+    const C = { navy:'1A2B4A', gold:'C9A84C', white:'FFFFFF', gray:'F4F5F7',
+                darkgray:'6B7280', lightblue:'E8F0F9', accent:'2563EB', red:'DC2626' };
+    const W = 10, H = 5.625;
+
+    function addBg(slide, dark=true){
+      slide.addShape(pres.ShapeType.rect, {x:0,y:0,w:W,h:H, fill:{color: dark?C.navy:C.white}, line:{color: dark?C.navy:C.white}});
+    }
+    function addFooter(slide, dark=true){
+      slide.addShape(pres.ShapeType.rect, {x:0,y:H-0.4,w:W,h:0.4, fill:{color:C.gold}, line:{color:C.gold}});
+      slide.addText('mintt · your clients connected', {x:0.3,y:H-0.38,w:5,h:0.36, fontSize:8, color:C.navy, bold:true});
+      slide.addText(d.fecha, {x:W-2.5,y:H-0.38,w:2.3,h:0.36, fontSize:8, color:C.navy, align:'right'});
+    }
+    function sectionTitle(slide, txt, dark=false){
+      slide.addText(txt, {x:0.5,y:0.25,w:9,h:0.5, fontSize:18, bold:true, color: dark?C.white:C.navy, fontFace:'Calibri'});
+      slide.addShape(pres.ShapeType.rect, {x:0.5,y:0.78,w:1.2,h:0.04, fill:{color:C.gold}, line:{color:C.gold}});
+    }
+
+    // ── SLIDE 1: PORTADA ──────────────────────────────────────────────
+    let sl = pres.addSlide();
+    addBg(sl, true);
+    sl.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.08,h:H, fill:{color:C.gold}, line:{color:C.gold}});
+    sl.addText('mintt', {x:0.5,y:1.0,w:9,h:1.0, fontSize:52, bold:true, color:C.gold, fontFace:'Calibri'});
+    sl.addText(`Propuesta económica para ${d.cliente}`, {x:0.5,y:2.1,w:9,h:0.6, fontSize:22, color:C.white, fontFace:'Calibri'});
+    sl.addText(MINTT.tagline, {x:0.5,y:2.75,w:9,h:0.4, fontSize:13, color:C.gold, italic:true, fontFace:'Calibri'});
+    if(d.sector) sl.addText(`Sector: ${d.sector}`, {x:0.5,y:3.3,w:9,h:0.3, fontSize:11, color:'9CAEC8', fontFace:'Calibri'});
+    sl.addText(d.fecha, {x:0.5,y:H-0.9,w:9,h:0.3, fontSize:11, color:'9CAEC8', fontFace:'Calibri'});
+    addFooter(sl, true);
+
+    // ── SLIDE 2: QUIÉNES SOMOS ────────────────────────────────────────
+    sl = pres.addSlide();
+    addBg(sl, false);
+    sectionTitle(sl, 'Quiénes somos');
+    sl.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.08,h:H, fill:{color:C.navy}, line:{color:C.navy}});
+    const quienes = [
+      {icon:'📡', tit:'Operador telco especializado', txt:'Licencia CMT. Soluciones de voz, datos y mensajería para empresas. Todo bajo el concepto de pago por uso.'},
+      {icon:'🤖', tit:'Expertos en automatización', txt:'Líderes en desarrollo de Chatbots y VoiceBots basados en IA. Comprometidos con un 30% de ahorro en costes operativos.'},
+      {icon:'☁️', tit:'100% Cloud · Sin inversión', txt:'Todas nuestras soluciones están en la nube. Solo pagas por el uso. Sin permanencia ni inversión en equipamiento.'},
+      {icon:'🔗', tit:'Integración total', txt:'Nos integramos con cualquier CRM, ERP o aplicación. Un único proveedor para todas tus telecomunicaciones.'},
+    ];
+    quienes.forEach((q,i)=>{
+      const col = i%2===0?0.5:5.3, row = i<2?1.0:2.9;
+      sl.addShape(pres.ShapeType.rect, {x:col,y:row,w:4.5,h:1.6, fill:{color:C.lightblue}, line:{color:'D0DFF0'}, rectRadius:0.08});
+      sl.addText(q.tit, {x:col+0.15,y:row+0.12,w:4.2,h:0.35, fontSize:11, bold:true, color:C.navy, fontFace:'Calibri'});
+      sl.addText(q.txt, {x:col+0.15,y:row+0.5,w:4.2,h:0.95, fontSize:9.5, color:C.darkgray, fontFace:'Calibri'});
+    });
+    addFooter(sl, false);
+
+    // ── SLIDE 3: SOLUCIÓN PROPUESTA ───────────────────────────────────
+    sl = pres.addSlide();
+    addBg(sl, false);
+    sl.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.08,h:H, fill:{color:C.navy}, line:{color:C.navy}});
+    sectionTitle(sl, `Solución propuesta · ${d.locales} local${d.locales>1?'es':''}`);
+    d.productosActivos.slice(0,8).forEach((p,i)=>{
+      const col = i%2===0?0.5:5.3, row = 1.0+(Math.floor(i/2)*1.05);
+      sl.addShape(pres.ShapeType.rect, {x:col,y:row,w:4.5,h:0.9, fill:{color:C.gray}, line:{color:'E0E4EA'}, rectRadius:0.05});
+      sl.addText('✓ '+p.concepto, {x:col+0.15,y:row+0.05,w:4.2,h:0.3, fontSize:10.5, bold:true, color:C.navy, fontFace:'Calibri'});
+      if(p.desc) sl.addText(p.desc.substring(0,90)+(p.desc.length>90?'…':''), {x:col+0.15,y:row+0.38,w:4.2,h:0.45, fontSize:8.5, color:C.darkgray, fontFace:'Calibri'});
+    });
+    addFooter(sl, false);
+
+    // ── SLIDE 4: PROPUESTA ECONÓMICA — RECURRENTE ─────────────────────
+    sl = pres.addSlide();
+    addBg(sl, false);
+    sl.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.08,h:H, fill:{color:C.navy}, line:{color:C.navy}});
+    sectionTitle(sl, 'Propuesta económica · Cuota mensual');
+
+    const brd = {style:'single', pt:0.5, color:'D0D5DD'};
+    const borders = {top:brd, bottom:brd, left:brd, right:brd};
+    const hdCell = (txt,w) => ({text:txt, options:{bold:true, fontSize:9, color:C.white, fill:C.navy, border:borders, align:'center', margin:[3,4,3,4]}, width:w});
+    const rowCell = (txt,w,bold=false,align='left',fill='FFFFFF') => ({text:txt, options:{fontSize:9, color:bold?C.navy:C.darkgray, bold, fill, border:borders, align, margin:[3,4,3,4]}, width:w});
+
+    const tblRows = [
+      [hdCell('Concepto',3500), hdCell('PVP/local/mes',1800), hdCell(`PVP grupo/mes (${d.locales} loc.)`,2000), hdCell('Dto.',900), hdCell('Margen',900)],
+    ];
+    d.allAdj2.forEach(row=>{
+      const pvpLocal = row.pvpAdj>0 && d.locales>0 ? (row.pvpAdj/d.locales) : 0;
+      tblRows.push([
+        rowCell(row.concepto,3500), rowCell(pvpLocal.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'€',1800,false,'right'),
+        rowCell(row.pvpAdj.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'€',2000,false,'right','F0F4FF'),
+        rowCell(row.dto,900,false,'center'),
+        rowCell(row.margenPct,900,false,'center'),
+      ]);
+    });
+    // Total row
+    tblRows.push([
+      rowCell('TOTAL MENSUAL',3500,true,'left','FFF8E7'),
+      rowCell('',1800,false,'right','FFF8E7'),
+      rowCell(d.finPvp,2000,true,'right','FFF8E7'),
+      rowCell('',900,false,'center','FFF8E7'),
+      rowCell('',900,false,'center','FFF8E7'),
+    ]);
+
+    sl.addTable(tblRows, {x:0.5,y:0.95,w:9,h:3.8, colW:[3.5,1.8,2.0,0.9,0.9], fontSize:9, fontFace:'Calibri'});
+    sl.addText(`PVP anual grupo: ${d.finPvpAnual}`, {x:6,y:4.9,w:3.5,h:0.3, fontSize:10, bold:true, color:C.navy, align:'right'});
+    addFooter(sl, false);
+
+    // ── SLIDE 5: COSTES ÚNICOS (si aplica) ────────────────────────────
+    if(d.unicoItems.length>0){
+      sl = pres.addSlide();
+      addBg(sl, false);
+      sl.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.08,h:H, fill:{color:C.navy}, line:{color:C.navy}});
+      sectionTitle(sl, 'Inversión inicial · Pago único');
+      const uRows = [[hdCell('Concepto',5500), hdCell('Coste',1700), hdCell('PVP',1800)]];
+      d.unicoItems.forEach(u=>{ uRows.push([rowCell(u.concepto,5500), rowCell(u.coste,1700,false,'right'), rowCell(u.pvp,1800,true,'right','F0F4FF')]); });
+      sl.addTable(uRows, {x:0.5,y:0.95,w:9,h:3, colW:[5.5,1.7,1.8], fontSize:9, fontFace:'Calibri'});
+      sl.addText('Este importe se factura una única vez y no forma parte de la cuota mensual.', {x:0.5,y:4.1,w:9,h:0.4, fontSize:9, color:C.darkgray, italic:true});
+      addFooter(sl, false);
+    }
+
+    // ── SLIDE 6: ROI (si aplica) ──────────────────────────────────────
+    if(d.roiData){
+      const r = d.roiData;
+      sl = pres.addSlide();
+      addBg(sl, true);
+      sl.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.08,h:H, fill:{color:C.gold}, line:{color:C.gold}});
+      sectionTitle(sl, 'Simulación de ahorro y rentabilidad', true);
+      const kpis = [
+        {lbl:'Coste actual / mes', val:r.costoActual, sub:'servicio con humanos'},
+        {lbl:'Ahorro mensual', val:r.ahorroMes, sub:r.ahorroAnualPct},
+        {lbl:'Ahorro anual', val:r.ahorroAnual, sub:''},
+        {lbl:'Retorno inversión', val:r.roiMeses, sub:''},
+        {lbl:'TIR estimada', val:r.tir, sub:''},
+        {lbl:'VNA (TD 5%)', val:r.vna, sub:''},
+      ];
+      kpis.forEach((k,i)=>{
+        const col=0.5+(i%3)*3.2, row=i<3?1.0:3.0;
+        sl.addShape(pres.ShapeType.rect, {x:col,y:row,w:2.9,h:1.6, fill:{color:'1F3560'}, line:{color:'2A4A80'}, rectRadius:0.08});
+        sl.addText(k.lbl, {x:col+0.15,y:row+0.1,w:2.6,h:0.3, fontSize:8.5, color:'9CAEC8', fontFace:'Calibri'});
+        sl.addText(k.val, {x:col+0.15,y:row+0.45,w:2.6,h:0.6, fontSize:18, bold:true, color:C.gold, fontFace:'Calibri'});
+        if(k.sub) sl.addText(k.sub, {x:col+0.15,y:row+1.1,w:2.6,h:0.3, fontSize:8, color:'9CAEC8', fontFace:'Calibri'});
+      });
+      addFooter(sl, true);
+    }
+
+    // ── SLIDE 7: CONDICIONES ─────────────────────────────────────────
+    sl = pres.addSlide();
+    addBg(sl, false);
+    sl.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.08,h:H, fill:{color:C.navy}, line:{color:C.navy}});
+    sectionTitle(sl, 'Condiciones generales de contratación');
+    const condItems = MINTT.condiciones.map(c=>c.replace('{VALIDEZ}',d.validez));
+    condItems.forEach((c,i)=>{
+      sl.addText([{text:'•  ',options:{bold:true,color:C.gold}},{text:c,options:{color:C.darkgray}}],
+        {x:0.6,y:1.0+i*0.7,w:8.8,h:0.6, fontSize:10, fontFace:'Calibri'});
+    });
+    addFooter(sl, false);
+
+    // ── SLIDE 8: CONTACTO ─────────────────────────────────────────────
+    sl = pres.addSlide();
+    addBg(sl, true);
+    sl.addShape(pres.ShapeType.rect, {x:0,y:0,w:0.08,h:H, fill:{color:C.gold}, line:{color:C.gold}});
+    sl.addText('mintt', {x:0.5,y:0.7,w:9,h:0.9, fontSize:44, bold:true, color:C.gold, fontFace:'Calibri'});
+    sl.addText(MINTT.tagline, {x:0.5,y:1.65,w:9,h:0.35, fontSize:13, color:'9CAEC8', italic:true, fontFace:'Calibri'});
+    sl.addShape(pres.ShapeType.rect, {x:0.5,y:2.15,w:9,h:0.02, fill:{color:'2A4A80'}, line:{color:'2A4A80'}});
+    sl.addText('Su contacto en mintt', {x:0.5,y:2.3,w:9,h:0.3, fontSize:10, color:'9CAEC8', fontFace:'Calibri'});
+    sl.addText(d.comercial, {x:0.5,y:2.65,w:9,h:0.45, fontSize:16, bold:true, color:C.white, fontFace:'Calibri'});
+    sl.addText([
+      {text:'📧  ',options:{color:C.gold}},{text:d.email+'   ',options:{color:'9CAEC8'}},
+      {text:'📞  ',options:{color:C.gold}},{text:d.telefono,options:{color:'9CAEC8'}}
+    ], {x:0.5,y:3.15,w:9,h:0.35, fontSize:11, fontFace:'Calibri'});
+    sl.addText([
+      {text:'🏢  ',options:{color:C.gold}},{text:MINTT.direccion1,options:{color:'9CAEC8'}},
+    ], {x:0.5,y:3.6,w:9,h:0.3, fontSize:9.5, fontFace:'Calibri'});
+    sl.addText([
+      {text:'    ',options:{color:C.gold}},{text:MINTT.direccion2,options:{color:'9CAEC8'}},
+    ], {x:0.5,y:3.95,w:9,h:0.3, fontSize:9.5, fontFace:'Calibri'});
+    addFooter(sl, true);
+
+    pres.writeFile({fileName:`Propuesta_mintt_${d.cliente.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pptx`});
+    st.textContent='✓ PowerPoint generado y descargado.';
+    setTimeout(()=>{ st.style.display='none'; }, 4000);
+  } catch(e) {
+    document.getElementById('gen-status').textContent='Error: '+e.message;
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GENERADOR WORD
+// ═══════════════════════════════════════════════════════════════════════
+async function generarDOCX(){
+  const st = document.getElementById('gen-status');
+  st.style.display='block'; st.textContent='Generando Word...';
+  try {
+    const d = getPropuestaData();
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+            AlignmentType, HeadingLevel, BorderStyle, WidthType, ShadingType,
+            VerticalAlign, PageBreak, UnderlineType } = docx;
+
+    const NAVY = '1A2B4A', GOLD = 'C9A84C', GRAY = '6B7280', LIGHTGRAY = 'F4F5F7';
+    const brd = (c='CCCCCC') => ({style:BorderStyle.SINGLE, size:4, color:c});
+    const borders = (c) => ({top:brd(c),bottom:brd(c),left:brd(c),right:brd(c)});
+    const cell = (text, opts={}) => new TableCell({
+      width:{size: opts.w||2000, type:WidthType.DXA},
+      shading:{fill: opts.fill||'FFFFFF', type:ShadingType.CLEAR},
+      borders: borders(opts.brdColor||'D0D5DD'),
+      margins:{top:60,bottom:60,left:100,right:100},
+      verticalAlign: VerticalAlign.CENTER,
+      children:[new Paragraph({
+        alignment: opts.align==='right'?AlignmentType.RIGHT: opts.align==='center'?AlignmentType.CENTER:AlignmentType.LEFT,
+        children:[new TextRun({text:String(text), bold:opts.bold||false, size:opts.size||18,
+          color:opts.color||'374151', font:'Calibri'})]
+      })]
+    });
+    const hdrCell = (text, w) => cell(text, {w, fill:NAVY, bold:true, color:'FFFFFF', align:'center', brdColor:NAVY});
+    const h1 = (text) => new Paragraph({
+      children:[new TextRun({text, bold:true, size:32, color:NAVY, font:'Calibri'})],
+      spacing:{before:400, after:200},
+      border:{bottom:{style:BorderStyle.SINGLE, size:6, color:GOLD, space:4}}
+    });
+    const h2 = (text) => new Paragraph({
+      children:[new TextRun({text, bold:true, size:22, color:NAVY, font:'Calibri'})],
+      spacing:{before:280, after:120}
+    });
+    const p = (text, opts={}) => new Paragraph({
+      alignment: opts.center ? AlignmentType.CENTER : AlignmentType.JUSTIFIED,
+      spacing:{before:80, after:80},
+      children:[new TextRun({text:String(text), size:opts.size||18, color:opts.color||'374151', italic:opts.italic||false, font:'Calibri'})]
+    });
+    const bullet = (text) => new Paragraph({
+      bullet:{level:0},
+      spacing:{before:60, after:60},
+      children:[new TextRun({text:String(text), size:18, color:'374151', font:'Calibri'})]
+    });
+    const pb = () => new Paragraph({children:[new PageBreak()]});
+    const spacer = (n=1) => [...Array(n)].map(()=>new Paragraph({children:[new TextRun('')], spacing:{before:40,after:40}}));
+
+    const children = [];
+
+    // PORTADA
+    children.push(
+      ...spacer(3),
+      new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:200,after:100},
+        children:[new TextRun({text:'mintt', bold:true, size:72, color:GOLD, font:'Calibri'})]}),
+      new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:0,after:80},
+        children:[new TextRun({text:MINTT.tagline, size:24, color:GRAY, italic:true, font:'Calibri'})]}),
+      ...spacer(2),
+      new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:80,after:40},
+        children:[new TextRun({text:`Propuesta económica para ${d.cliente}`, bold:true, size:36, color:NAVY, font:'Calibri'})]}),
+      d.sector?new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:40,after:40},
+        children:[new TextRun({text:`Sector: ${d.sector}`, size:20, color:GRAY, font:'Calibri'})]}):null,
+      new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:60,after:0},
+        children:[new TextRun({text:d.fecha, size:18, color:GRAY, font:'Calibri'})]}),
+      pb(),
+    ).filter(Boolean);
+
+    // SECCIÓN 1: QUIÉNES SOMOS
+    children.push(h1('1. Quiénes somos'));
+    children.push(p('Mintt es el operador de telecomunicaciones especializado en soluciones avanzadas de atención al cliente para empresas. Con licencia CMT, ofrecemos voz, datos, mensajería y automatización inteligente bajo el concepto de pago por uso.'));
+    children.push(p('Expertos en el desarrollo de soluciones VoiceBot y Chatbot basadas en IA generativa. Comprometidos con un ahorro mínimo del 30% en costes operativos de nuestros clientes.'));
+    children.push(...spacer(1));
+    ['Soluciones 100% en la nube. Sin inversión en equipamiento. Sin permanencia.',
+     'Un único proveedor para todas tus telecomunicaciones: fijo, móvil, datos, mensajería y automatización.',
+     'Integración con cualquier CRM, ERP o aplicación del cliente.',
+     'Atención y soporte técnico especializado en horario laboral.'
+    ].forEach(b=>children.push(bullet(b)));
+    children.push(pb());
+
+    // SECCIÓN 2: SOLUCIÓN PROPUESTA
+    children.push(h1('2. Solución propuesta'));
+    children.push(p(`La presente propuesta contempla una solución integral de comunicaciones para ${d.cliente}, compuesta por los siguientes servicios:`));
+    children.push(...spacer(1));
+    d.productosActivos.forEach(prod=>{
+      children.push(h2(prod.concepto));
+      if(prod.desc) children.push(p(prod.desc));
+    });
+    children.push(pb());
+
+    // SECCIÓN 3: PROPUESTA ECONÓMICA RECURRENTE
+    children.push(h1('3. Propuesta económica · Cuota mensual'));
+    children.push(p(`La siguiente tabla recoge los servicios contratados y su precio mensual para un grupo de ${d.locales} local${d.locales>1?'es':''}:`));
+    children.push(...spacer(1));
+
+    const totalW = 9360;
+    const tblHeader = new TableRow({children:[
+      hdrCell('Concepto', 3600), hdrCell('PVP/local/mes', 1800),
+      hdrCell(`PVP grupo/mes`, 2100), hdrCell('Dto.', 900), hdrCell('Margen', 960)
+    ]});
+    const tblRows2 = d.allAdj2.map(row=>{
+      const pvpLocal = row.pvpAdj>0&&d.locales>0?(row.pvpAdj/d.locales):0;
+      return new TableRow({children:[
+        cell(row.concepto, {w:3600}),
+        cell(pvpLocal.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'€', {w:1800,align:'right'}),
+        cell(row.pvpAdj.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'€', {w:2100,align:'right',fill:'EEF4FF'}),
+        cell(row.dto, {w:900,align:'center'}),
+        cell(row.margenPct, {w:960,align:'center'}),
+      ]});
+    });
+    const tblTotal = new TableRow({children:[
+      cell('TOTAL MENSUAL GRUPO', {w:3600,bold:true,fill:'FFF8E7',color:NAVY}),
+      cell('', {w:1800,fill:'FFF8E7'}),
+      cell(d.finPvp, {w:2100,bold:true,align:'right',fill:'FFF8E7',color:NAVY}),
+      cell('', {w:900,fill:'FFF8E7'}),
+      cell('', {w:960,fill:'FFF8E7'}),
+    ]});
+
+    children.push(new Table({
+      width:{size:totalW,type:WidthType.DXA},
+      columnWidths:[3600,1800,2100,900,960],
+      rows:[tblHeader,...tblRows2,tblTotal]
+    }));
+    children.push(...spacer(1));
+    children.push(p(`PVP anual grupo: ${d.finPvpAnual}`, {color:NAVY}));
+
+    // SECCIÓN 4: COSTES ÚNICOS (si aplica)
+    if(d.unicoItems.length>0){
+      children.push(pb());
+      children.push(h1('4. Inversión inicial · Pago único'));
+      children.push(p('Los siguientes conceptos se facturan una única vez y no forman parte de la cuota mensual:'));
+      children.push(...spacer(1));
+      const uniHeader = new TableRow({children:[hdrCell('Concepto',5560), hdrCell('Coste',1800), hdrCell('PVP',2000)]});
+      const uniRows = d.unicoItems.map(u=>new TableRow({children:[
+        cell(u.concepto,{w:5560}), cell(u.coste,{w:1800,align:'right'}), cell(u.pvp,{w:2000,align:'right',fill:'EEF4FF',bold:true})
+      ]}));
+      children.push(new Table({width:{size:totalW,type:WidthType.DXA}, columnWidths:[5560,1800,2000], rows:[uniHeader,...uniRows]}));
+    }
+
+    // SECCIÓN 5: ROI (si aplica)
+    if(d.roiData){
+      children.push(pb());
+      const sn = d.unicoItems.length>0?'5':'4';
+      children.push(h1(`${sn}. Simulación de ahorro y rentabilidad`));
+      children.push(p('La siguiente simulación compara el coste actual del servicio de atención con humanos frente al coste de la solución propuesta:'));
+      children.push(...spacer(1));
+      const r = d.roiData;
+      const roiHdr = new TableRow({children:[hdrCell('Concepto',4680), hdrCell('Valor',4680)]});
+      const roiData2 = [
+        ['Coste actual del servicio / mes', r.costoActual],
+        ['Coste con solución mintt / mes', d.totPvpMes],
+        ['Ahorro mensual estimado', r.ahorroMes+' ('+r.ahorroAnualPct+')'],
+        ['Ahorro anual estimado', r.ahorroAnual],
+        ['Retorno de la inversión', r.roiMeses],
+        ['TIR estimada', r.tir],
+        [r.vna, ''],
+      ];
+      children.push(new Table({
+        width:{size:totalW,type:WidthType.DXA}, columnWidths:[4680,4680],
+        rows:[roiHdr,...roiData2.map(([k,v2])=>new TableRow({children:[cell(k,{w:4680,bold:true,fill:LIGHTGRAY}), cell(v2,{w:4680,color:NAVY,bold:true,align:'right'})]}))]
+      }));
+      children.push(...spacer(1));
+      children.push(p('* Simulación basada en los datos facilitados. Mayor volumen de conversaciones incrementa la rentabilidad y reduce el período de retorno.', {italic:true, color:GRAY}));
+    }
+
+    // SECCIÓN CONDICIONES
+    children.push(pb());
+    const lastN = d.unicoItems.length>0?(d.roiData?6:5):(d.roiData?5:4);
+    children.push(h1(`${lastN}. Condiciones generales de contratación`));
+    MINTT.condiciones.map(c=>c.replace('{VALIDEZ}',d.validez)).forEach(c=>children.push(bullet(c)));
+    children.push(...spacer(2));
+
+    // CONTACTO
+    children.push(new Paragraph({
+      alignment:AlignmentType.CENTER, spacing:{before:200,after:80},
+      border:{top:{style:BorderStyle.SINGLE,size:6,color:GOLD,space:4}},
+      children:[new TextRun({text:'Su contacto en mintt', size:18, color:GRAY, font:'Calibri'})]}));
+    children.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:60,after:40},
+      children:[new TextRun({text:d.comercial, bold:true, size:24, color:NAVY, font:'Calibri'})]}));
+    children.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:40,after:40},
+      children:[new TextRun({text:`${d.email}   ·   ${d.telefono}`, size:18, color:GRAY, font:'Calibri'})]}));
+    children.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:20,after:20},
+      children:[new TextRun({text:MINTT.direccion1, size:16, color:GRAY, font:'Calibri'})]}));
+    children.push(new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:20},
+      children:[new TextRun({text:MINTT.direccion2, size:16, color:GRAY, font:'Calibri'})]}));
+
+    const doc2 = new docx.Document({
+      styles:{default:{document:{run:{font:'Calibri', size:18}}}},
+      numbering:{config:[{reference:'bullets',levels:[{level:0,format:'bullet',text:'•',alignment:AlignmentType.LEFT,
+        style:{paragraph:{indent:{left:720,hanging:360}}}}]}]},
+      sections:[{
+        properties:{page:{size:{width:11906,height:16838}, margin:{top:1000,right:1000,bottom:1000,left:1000}}},
+        children: children
+      }]
+    });
+
+    const buf = await docx.Packer.toBlob(doc2);
+    const url = URL.createObjectURL(buf);
+    const a = document.createElement('a');
+    a.href=url; a.download=`Propuesta_mintt_${d.cliente.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.docx`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    st.textContent='✓ Word generado y descargado.';
+    setTimeout(()=>{ st.style.display='none'; }, 4000);
+  } catch(e){
+    document.getElementById('gen-status').textContent='Error: '+e.message;
+    console.error(e);
+  }
+}
+
 </script>
 </body>
 </html>
