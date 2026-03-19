@@ -761,7 +761,8 @@ function parseBBPlans(rows){
 // ═══════════════════════════════════════════════════════════════════════
 const state = {
   blocks:{telco:true,ivr:false,pbx:false,acd:false,ia:false,bb:true,adhoc:false,sms:false,hw:false,horas:false},
-  adjValues:{}
+  adjValues:{},
+  adjCalc:{}
 };
 
 Object.entries(state.blocks).forEach(([id,on])=>{
@@ -925,10 +926,20 @@ function recalc(){
 
   // ══ RENDER AJUSTE ══
   const allAdj=[...rec.map(r=>({...r,tipo:'rec'})),...unico.map(r=>({...r,key:r.label,tipo:'unico'}))];
+
+  // Limpia entradas que ya no están activas
+  const activeKeys=new Set(allAdj.map(r=>r.key));
+  Object.keys(state.adjValues).forEach(k=>{ if(!activeKeys.has(k)) delete state.adjValues[k]; });
+  Object.keys(state.adjCalc).forEach(k=>{ if(!activeKeys.has(k)) delete state.adjCalc[k]; });
+
   const tbA=document.getElementById('tbody-adj'); tbA.innerHTML='';
   allAdj.forEach(row=>{
     const pvpCalc=row.p*(row.tipo==='rec'?locales:1);
-    if(!state.adjValues[row.key]) state.adjValues[row.key]=pvpCalc;
+    // Si el PVP calculado cambió (o es nuevo), resetea el ajuste al nuevo valor
+    if(state.adjCalc[row.key] !== pvpCalc){
+      state.adjValues[row.key] = pvpCalc;
+      state.adjCalc[row.key]   = pvpCalc;
+    }
     const pvpAdj=state.adjValues[row.key];
     const dto=pvpCalc>0?((pvpCalc-pvpAdj)/pvpCalc*100):0;
     const costBase=row.c*(row.tipo==='rec'?locales:1);
